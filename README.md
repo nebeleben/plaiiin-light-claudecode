@@ -60,6 +60,20 @@ restart Claude Code.
   `~/.plaiiin/lamps/secrets.json` (mode 0600).
 - `PLAIIIN_LAMPS_DIR` overrides the state directory (tests and the smoke script use a temp dir).
 
+## Security notes
+
+- **Effect preview sandbox.** `effect_preview` runs untrusted scripts in a separate Node process
+  under the Node permission model (`--permission`, reading only its own worker file), with a heap
+  cap and a timeout; the script itself runs in a `vm` context holding only the shade runtime (no
+  `require`, `process` or `fetch`). The permission model blocks file-system access, child processes
+  and worker threads, but it does **not** restrict network access: a script that escaped the `vm`
+  context could still open sockets. Treat previews of scripts from strangers accordingly.
+- **Share links are `http://` only.** Lamps serve plain http on the LAN, so an `https://` share link
+  is refused ("lamps use http — use the http:// link") rather than guessed at port 443 or 80.
+- **Moved lamps.** When a lamp is found at a new address (mDNS re-resolve or `lamps_discover`), the
+  new host must report the same `deviceId` on the open `GET /api` before the stored key is sent to it.
+- **Keys.** On macOS the key is passed to `security -i` on stdin, never on its command line.
+
 ## Uninstall
 
 ```sh

@@ -29,6 +29,9 @@ Then add it **without the key passing through the chat**:
   `qrImagePath`.
 - Only if neither works: the user pastes the link and you pass it as `url`.
 
+Share links are always `http://` (lamps serve plain http on the LAN); an `https://` link is refused.
+Ask the user for the `http://` link the app shows.
+
 The key goes into the macOS Keychain (on other systems a `secrets.json` readable only by the user)
 and is never returned. **Never ask the user to paste a key into the chat if another way works,
 never repeat, print or log a key or share link**, and never write one into a file.
@@ -47,8 +50,8 @@ never repeat, print or log a key or share link**, and never write one into a fil
 | `swarm` | read which swarm the lamp is in (never join/leave) |
 
 Reads (state, effects list, images, scenes, info) always work with any key. Pairing, keys, Wi-Fi,
-MQTT, limits, grid, Bluetooth and factory reset can never be granted — this server has no tools for
-them. `maxBrightness` caps brightness set through this key (the result shows the applied value);
+MQTT, limits, grid, orientation, Bluetooth, the lamp's AI provider key and factory reset can never be
+granted — this server has no tools for them. `maxBrightness` caps brightness set through this key (the result shows the applied value);
 `onlyWhenOn` refuses everything but reads and power while the lamp is off.
 
 ## When a tool is refused
