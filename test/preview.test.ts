@@ -138,6 +138,13 @@ describe('framesToPngStrip', () => {
     expect(() => framesToPngStrip([new Uint8Array(16384 * 3)], 16384, 1)).toThrow(/16384 px wide/);
   });
 
+  it('never exceeds 4096 px in height either: scale from both sides, too-tall frames refused', () => {
+    const tall = PNG.sync.read(framesToPngStrip([new Uint8Array(1 * 2048 * 3)], 1, 2048));
+    expect(tall.height).toBeLessThanOrEqual(4096);
+    expect(PNG.sync.read(framesToPngStrip([new Uint8Array(1 * 1024 * 3)], 1, 1024, 8)).height).toBe(4096); // scale lowered
+    expect(() => framesToPngStrip([new Uint8Array(16384 * 3)], 1, 16384)).toThrow(/16384 px tall/);
+  });
+
   it('keeps distinct pixels where they are', () => {
     const f = new Uint8Array([10, 20, 30, 40, 50, 60]); // 2x1
     const png = PNG.sync.read(framesToPngStrip([f], 2, 1, 2));

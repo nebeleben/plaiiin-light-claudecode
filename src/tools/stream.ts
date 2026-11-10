@@ -157,6 +157,10 @@ export class StreamManager {
       if (c.state === 'streaming') { c.state = 'closed by the lamp'; c.reason = `the lamp closed the stream (code ${code})`; c.abort.abort(); }
     });
     const frameBytes = 3 + c.grid.w * c.grid.h * 3;
+    // One abort promise per connection (not a listener per frame): a stop during a batch render returns at once.
+    const aborted = new Promise<undefined>((r) => {
+      if (signal.aborted) r(undefined); else signal.addEventListener('abort', () => r(undefined), { once: true });
+    });
     try {
       for (let i = 0; ; i++) {
         const due = s.startedAt + (i * 1000) / s.fps;
@@ -165,10 +169,8 @@ export class StreamManager {
         if (signal.aborted) break;
         let frame: Uint8Array | undefined;
         try {
-          // A stop during a batch render returns at once; the render finishes in the background.
-          frame = await Promise.race([c.src(i), new Promise<undefined>((r) => {
-            if (signal.aborted) r(undefined); else signal.addEventListener('abort', () => r(undefined), { once: true });
-          })]);
+          // The render finishes in the background after a stop.
+          frame = await Promise.race([c.src(i), aborted]);
         } catch (e) {
           c.state = 'failed'; c.reason = errorText(e); break;
         }

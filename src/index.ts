@@ -7,6 +7,10 @@ import { makeSecrets } from './store/secrets';
 import { buildServer } from './server';
 import { Confirmations } from './tools/confirm';
 import { errorText, type ToolContext } from './tools/context';
+import { consoleToStderr } from './util/stdout';
+
+// stdout is the JSON-RPC channel: library console output must not corrupt it.
+consoleToStderr();
 
 const stateDir = process.env.PLAIIIN_LAMPS_DIR ?? join(homedir(), '.plaiiin', 'lamps');
 const registry = new Registry(new FleetStore(stateDir), makeSecrets(stateDir));
