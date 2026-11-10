@@ -200,6 +200,18 @@ describe('lamps_discover', () => {
     expect(r2.known).toEqual([expect.objectContaining({ deviceId: 'oooooooooooo' })]);
     expect(r2.added).toEqual([]);
   });
+
+  it('a known lamp seen at a new address is only moved when that host reports the same deviceId', async () => {
+    let found: any[] = [];
+    const t = await harness({ discover: async () => found });
+    const a = await t.addFake({ deviceId: 'aaaaaaaaaaaa', name: 'Alpha', role: 'creator' });
+    const other = await t.fake({ deviceId: 'zzzzzzzzzzzz', name: 'Other', role: 'creator' });
+    found = [{ deviceId: 'aaaaaaaaaaaa', name: 'Alpha', host: '127.0.0.1', port: other.port, paired: true }];
+    const r = await t.call('lamps_discover');
+    expect(r.known).toEqual([expect.objectContaining({ deviceId: 'aaaaaaaaaaaa', port: a.port })]);
+    expect(t.fleet.get('aaaaaaaaaaaa')!.port).toBe(a.port);
+    expect(other.state.requests.every((x) => x.auth === undefined)).toBe(true);
+  });
 });
 
 describe('swarms_list read classification', () => {

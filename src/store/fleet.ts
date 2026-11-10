@@ -58,11 +58,29 @@ export class FleetStore {
     if (this.lamps.length !== n) this.save();
   }
 
+  /**
+   * Missing file → empty. Unparsable JSON → moved aside to `fleet.json.bad-<ms>` (one stderr line) and
+   * start empty, so the server still comes up. Entries without a deviceId or name are dropped.
+   */
   private load(): FleetLamp[] {
     let text: string;
     try { text = readFileSync(this.file, 'utf8'); } catch { return []; }
-    const j = JSON.parse(text) as { lamps?: unknown };
-    return Array.isArray(j.lamps) ? (j.lamps as FleetLamp[]).map(clean) : [];
+    let j: unknown;
+    try {
+      j = JSON.parse(text);
+    } catch {
+      const bad = `${this.file}.bad-${Date.now()}`;
+      try { renameSync(this.file, bad); } catch { /* the next save replaces it anyway */ }
+      process.stderr.write(`plaiiin-lamps: ${this.file} is not valid JSON; moved it to ${bad} and started with no lamps\n`);
+      return [];
+    }
+    const lamps = (j as { lamps?: unknown } | null)?.lamps;
+    if (!Array.isArray(lamps)) return [];
+    return lamps
+      .filter((l): l is FleetLamp => !!l && typeof l === 'object'
+        && typeof (l as FleetLamp).deviceId === 'string' && !!(l as FleetLamp).deviceId
+        && typeof (l as FleetLamp).name === 'string' && !!(l as FleetLamp).name)
+      .map(clean);
   }
 
   private save(): void {

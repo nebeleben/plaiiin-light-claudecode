@@ -30,6 +30,8 @@ const now = () => new Date().toISOString();
 /** Fleet + secrets + clients: the only way tools reach a lamp. One LampClient per deviceId. */
 export class Registry {
   private readonly clients = new Map<string, { client: LampClient; token?: string }>();
+  /** Secrets read once per deviceId (a Keychain read spawns `security`); dropped on every write here. */
+  private readonly secretCache = new Map<string, string | undefined>();
   private readonly timeoutMs?: number;
 
   constructor(
@@ -74,6 +76,7 @@ export class Registry {
     this.fleet.remove(deviceId);
     this.clients.get(deviceId)?.client.destroy();
     this.clients.delete(deviceId);
+    this.secretCache.delete(deviceId);
     try {
       await this.secrets.delete(deviceId);
       return {};
@@ -84,7 +87,7 @@ export class Registry {
 
   async client(idOrName: string): Promise<{ lamp: FleetLamp; client: LampClient }> {
     const lamp = this.lookup(idOrName);
-    const token = await this.secrets.get(lamp.deviceId);
+    const token = await this.secretOf(lamp.deviceId);
     let entry = this.clients.get(lamp.deviceId);
     if (entry && entry.token !== token) { entry.client.destroy(); entry = undefined; }
     if (!entry) {
@@ -102,7 +105,40 @@ export class Registry {
    */
   async endpoint(idOrName: string): Promise<{ lamp: FleetLamp; host: string; port: number; token?: string }> {
     const lamp = this.lookup(idOrName);
-    return { lamp, host: lamp.host, port: lamp.port, token: await this.secrets.get(lamp.deviceId) };
+    return { lamp, host: lamp.host, port: lamp.port, token: await this.secretOf(lamp.deviceId) };
+  }
+
+  private async secretOf(deviceId: string): Promise<string | undefined> {
+    if (this.secretCache.has(deviceId)) return this.secretCache.get(deviceId);
+    const v = await this.secrets.get(deviceId);
+    this.secretCache.set(deviceId, v);
+    return v;
+  }
+
+  /** Does the lamp at host:port say it is `deviceId`? Open `GET /api`, no token sent. */
+  private async isDevice(deviceId: string, host: string, port: number): Promise<boolean> {
+    const c = new LampClient({ host, port }, { timeoutMs: this.timeoutMs });
+    try {
+      return (await c.get<ApiInfo>('/api')).deviceId === deviceId;
+    } catch {
+      return false;
+    } finally {
+      c.destroy();
+    }
+  }
+
+  /**
+   * A known lamp was seen at a new address (mDNS). The address is saved only after the new host
+   * reports the same deviceId on the open `GET /api`, so the stored key never goes to another device.
+   */
+  async relocate(deviceId: string, host: string, port: number): Promise<boolean> {
+    const lamp = this.fleet.get(deviceId);
+    if (!lamp || lamp.deviceId !== deviceId) return false;
+    if (lamp.host === host && lamp.port === port) return true;
+    if (!(await this.isDevice(deviceId, host, port))) return false;
+    this.fleet.upsert({ ...lamp, host, port, lastSeen: now() });
+    this.clients.get(deviceId)?.client.updateEndpoint(host, port);
+    return true;
   }
 
   /** Run `fn` against a lamp. If it is unreachable, re-resolve it by deviceId once; if it moved, save and retry. */
@@ -114,6 +150,8 @@ export class Registry {
       if (!(e instanceof LampUnreachable)) throw e;
       const d = await this.resolve(lamp.deviceId).catch(() => undefined);
       if (!d || (d.host === lamp.host && d.port === lamp.port)) throw e;
+      // mDNS answers are unauthenticated: check the new host is this lamp before it gets our key.
+      if (!(await this.isDevice(lamp.deviceId, d.host, d.port))) throw e;
       const moved: FleetLamp = { ...lamp, host: d.host, port: d.port, lastSeen: now() };
       this.fleet.upsert(moved);
       client.updateEndpoint(d.host, d.port);
@@ -127,7 +165,9 @@ export class Registry {
     try {
       const who = await c.get<Whoami>('/api/whoami');
       const lamp = await this.describe(c, link.host, link.port, accessFrom(who), true);
+      this.secretCache.delete(lamp.deviceId);
       await this.secrets.set(lamp.deviceId, link.key);
+      this.secretCache.delete(lamp.deviceId);
       this.fleet.upsert(lamp);
       return lamp;
     } finally {
@@ -148,7 +188,9 @@ export class Registry {
       }
       if (who.role !== 'admin') throw new Error(`${d.name} is paired; add it with a share link or QR code from its owner`);
       const lamp = await this.describe(c, d.host, d.port, { role: 'admin' }, false);
+      this.secretCache.delete(lamp.deviceId);
       await this.secrets.delete(lamp.deviceId);
+      this.secretCache.delete(lamp.deviceId);
       this.fleet.upsert(lamp);
       return lamp;
     } finally {

@@ -48,8 +48,11 @@ export function registerFleetTools(server: McpServer, ctx: ToolContext): void {
     await Promise.all(found.map(async (d) => {
       const have = fleet.find((l) => l.deviceId === d.deviceId);
       if (have) {
-        if (have.host !== d.host || have.port !== d.port) ctx.registry.update({ ...have, host: d.host, port: d.port, lastSeen: new Date().toISOString() });
-        known.push({ name: have.name, deviceId: d.deviceId, host: d.host, role: have.role });
+        // Moved only when the new host itself reports this deviceId (mDNS answers are unauthenticated).
+        const moved = await ctx.registry.relocate(have.deviceId, d.host, d.port);
+        const at = moved ? d : have;
+        known.push({ name: have.name, deviceId: d.deviceId, host: at.host, port: at.port, role: have.role,
+          ...(moved ? {} : { addressNotUpdated: `${d.host}:${d.port} did not identify as this lamp` }) });
       } else if (d.paired) {
         needsKey.push({ name: d.name, deviceId: d.deviceId, host: d.host, hint: KEY_HINT });
       } else {

@@ -93,6 +93,55 @@ describe('Registry', () => {
     expect(resolved).toBe(1);
   });
 
+  it('re-resolve: the stored key is not sent to a new host that reports another deviceId', async () => {
+    const l = await fake({ role: 'creator' });
+    const impostor = await fake({ deviceId: '999999999999', name: 'Other', role: 'creator' });
+    const stale = await deadPort();
+    const { fleet, secrets, reg } = setup(async (id) => ({ deviceId: id, name: 'Kitchen', host: '127.0.0.1', port: impostor.port, paired: true }));
+    fleet.upsert({ deviceId: 'aabbccddeeff', name: 'Kitchen', host: '127.0.0.1', port: stale, role: 'creator', shared: true, lastSeen: '' });
+    await secrets.set('aabbccddeeff', l.token);
+    await expect(reg.call('kitchen', (c) => c.get('/api/state'))).rejects.toThrow(/unreachable/);
+    expect(impostor.state.requests.map((r) => r.path)).toEqual(['/api']);
+    expect(impostor.state.requests.every((r) => r.auth === undefined)).toBe(true);
+    expect(fleet.get('aabbccddeeff')!.port).toBe(stale);
+  });
+
+  it('relocate verifies the deviceId (tokenless GET /api) before saving a new address', async () => {
+    const l = await fake({ role: 'creator' });
+    const other = await fake({ deviceId: '999999999999', name: 'Other', role: 'creator' });
+    const { fleet, reg } = setup();
+    fleet.upsert({ deviceId: 'aabbccddeeff', name: 'Kitchen', host: '127.0.0.1', port: 1, role: 'creator', shared: true, lastSeen: '' });
+    expect(await reg.relocate('aabbccddeeff', '127.0.0.1', other.port)).toBe(false);
+    expect(fleet.get('aabbccddeeff')!.port).toBe(1);
+    expect(await reg.relocate('aabbccddeeff', '127.0.0.1', l.port)).toBe(true);
+    expect(fleet.get('aabbccddeeff')!.port).toBe(l.port);
+    expect(l.state.requests.every((r) => r.auth === undefined)).toBe(true);
+  });
+
+  it('caches secrets per deviceId; set/forget/addShared invalidate', async () => {
+    const l = await fake({ role: 'creator' });
+    const { fleet, secrets, reg: _unused } = setup();
+    let gets = 0;
+    const counting = { ...secrets, get: async (id: string) => { gets++; return secrets.get(id); },
+      set: (id: string, v: string) => secrets.set(id, v), delete: (id: string) => secrets.delete(id) };
+    const reg = new Registry(fleet, counting, async () => undefined);
+    cleanup.push(() => reg.close());
+    await reg.addShared({ host: '127.0.0.1', port: l.port, key: l.token });
+    await reg.call('Kitchen', (c) => c.get('/api/state'));
+    await reg.call('Kitchen', (c) => c.get('/api/state'));
+    await reg.endpoint('Kitchen');
+    expect(gets).toBe(1);
+    // a re-add with a new key is used at once
+    l.state.requests.length = 0;
+    await reg.addShared({ host: '127.0.0.1', port: l.port, key: l.token });
+    await reg.call('Kitchen', (c) => c.get('/api/state'));
+    expect(gets).toBe(2);
+    await reg.forget('aabbccddeeff');
+    fleet.upsert({ deviceId: 'aabbccddeeff', name: 'Kitchen', host: '127.0.0.1', port: l.port, role: 'creator', shared: true, lastSeen: '' });
+    expect((await reg.endpoint('Kitchen')).token).toBeUndefined();
+    expect(gets).toBe(3);
+  });
+
   it('gives up after one re-resolve when the lamp is not found', async () => {
     const stale = await deadPort();
     let resolved = 0;

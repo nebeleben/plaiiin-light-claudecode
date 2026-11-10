@@ -9,24 +9,40 @@ export interface Secrets {
   delete(deviceId: string): Promise<void>;
 }
 
-export type Runner = (cmd: string, args: string[]) => Promise<{ code: number; stdout: string; stderr: string }>;
+/** Run `cmd` with an argument array (no shell); `input` is written to its stdin. */
+export type Runner = (cmd: string, args: string[], input?: string) => Promise<{ code: number; stdout: string; stderr: string }>;
 
 const SERVICE = 'plaiiin-lamp-mcp';
 const SECURITY = '/usr/bin/security';
 const NOT_FOUND = 44; // errSecItemNotFound exit status of `security`
 
+/** A double-quoted word for `security -i` (backslash escapes `"` and `\`). Control characters can't be quoted. */
+function quote(v: string, what: string): string {
+  if (/[\x00-\x1f\x7f]/.test(v)) throw new Error(`keychain: the ${what} contains a control character`);
+  return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * The `security -i` stdin line that stores a secret. The secret goes on stdin, never in argv, where
+ * any local user could read it (`ps`). The error for a bad value never contains the value.
+ */
+export function keychainSetCommand(id: string, secret: string): string {
+  return `add-generic-password -U -s ${quote(SERVICE, 'service')} -a ${quote(id, 'account')} -w ${quote(secret, 'secret')}\n`;
+}
+
+/** get/delete carry no secret, so they stay plain argument arrays. */
 export const keychainArgs = {
-  set: (id: string, secret: string) => ['add-generic-password', '-U', '-s', SERVICE, '-a', id, '-w', secret],
   get: (id: string) => ['find-generic-password', '-s', SERVICE, '-a', id, '-w'],
   delete: (id: string) => ['delete-generic-password', '-s', SERVICE, '-a', id],
 };
 
 /** Spawn with an argument array (no shell), collect output. */
-const spawnRunner: Runner = (cmd, args) => new Promise((resolve, reject) => {
-  const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+const spawnRunner: Runner = (cmd, args, input) => new Promise((resolve, reject) => {
+  const p = spawn(cmd, args, { stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'] });
+  if (input !== undefined) { p.stdin!.on('error', () => { /* reported via exit code */ }); p.stdin!.end(input, 'utf8'); }
   let stdout = '', stderr = '';
-  p.stdout.on('data', (c: Buffer) => { stdout += c.toString('utf8'); });
-  p.stderr.on('data', (c: Buffer) => { stderr += c.toString('utf8'); });
+  p.stdout!.on('data', (c: Buffer) => { stdout += c.toString('utf8'); });
+  p.stderr!.on('data', (c: Buffer) => { stderr += c.toString('utf8'); });
   p.on('error', (e) => reject(new Error(`keychain: cannot run ${cmd}: ${(e as NodeJS.ErrnoException).code ?? 'error'}`)));
   p.on('close', (code) => resolve({ code: code ?? -1, stdout, stderr }));
 });
@@ -42,7 +58,7 @@ class KeychainSecrets implements Secrets {
   }
 
   async set(deviceId: string, secret: string): Promise<void> {
-    const r = await this.run(SECURITY, keychainArgs.set(deviceId, secret));
+    const r = await this.run(SECURITY, ['-i'], keychainSetCommand(deviceId, secret));
     if (r.code !== 0) throw fail('add-generic-password', r.code);
   }
 
@@ -81,7 +97,14 @@ class FileSecrets implements Secrets {
 
   private read(): Record<string, string> {
     let text: string;
-    try { text = readFileSync(this.file, 'utf8'); } catch { return {}; }
+    try {
+      text = readFileSync(this.file, 'utf8');
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') return {};
+      // Anything else must not read as "no secrets": a later write would drop every stored key.
+      throw new Error(`cannot read secrets file ${this.file}: ${code ?? 'error'}`);
+    }
     try {
       const j = JSON.parse(text) as unknown;
       return j && typeof j === 'object' ? { ...(j as Record<string, string>) } : {};
