@@ -1,0 +1,11 @@
+{
+  "name": "plaiiin",
+  "owner": { "name": "plaiiin" },
+  "plugins": [
+    {
+      "name": "plaiiin-lamps",
+      "source": "./plugin",
+      "description": "PlaiiinLight lamps for Claude Code"
+    }
+  ]
+}
