@@ -13,7 +13,7 @@ import { MAX_FRAMES, previewScript, type Rgb } from '../preview/shade';
 import type { FleetLamp } from '../store/fleet';
 import { Library } from '../store/library';
 import { scrub } from '../util/scrub';
-import { CONFIRM_REFUSED, confirmContent, digest } from './confirm';
+import { confirmContent, confirmTargets, digest } from './confirm';
 import {
   errorText, explain, failure, guard, lampArg, lampsArg, normLamps, result, type ToolContext,
 } from './context';
@@ -259,11 +259,11 @@ export function registerEffectsTools(server: McpServer, ctx: ToolContext): void 
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   }, async (args) => guard(async () => {
     const targets = ctx.registry.resolveTargets(normLamps(args.lamps));
-    if (args.confirm === undefined) {
-      return result(ctx.confirm.request('effect_delete', args, `Delete the effect "${args.name}" from ${targets.map((l) => l.name).join(', ')}. This can't be undone.`));
-    }
-    if (!ctx.confirm.consume('effect_delete', args, args.confirm)) return failure(CONFIRM_REFUSED);
-    return result({ results: await fanout(ctx, targets.map((l) => l.deviceId), EFFECTS, async (c) => {
+    const ids = targets.map((l) => l.deviceId);
+    const ask = await confirmTargets(ctx, 'effect_delete', args, args.confirm, args.name, ids,
+      () => `Delete the effect "${args.name}" from ${targets.map((l) => l.name).join(', ')}. This can't be undone.`);
+    if (ask) return result(ask);
+    return result({ results: await fanout(ctx, ids, EFFECTS, async (c) => {
       await c.send('DELETE', `/api/js/${enc(args.name)}`);
       return { deleted: args.name };
     }) });

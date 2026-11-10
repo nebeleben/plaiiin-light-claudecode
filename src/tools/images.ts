@@ -9,7 +9,7 @@ import type { FleetLamp } from '../store/fleet';
 import { Library } from '../store/library';
 import { copyImage, findSavedImage, listImages, readImage } from '../sync/copy';
 import { scrub } from '../util/scrub';
-import { CONFIRM_REFUSED, confirmContent, digest } from './confirm';
+import { confirmContent, confirmTargets, digest } from './confirm';
 import { errorText, explain, failure, guard, lampArg, lampsArg, normLamps, result, type ToolContext } from './context';
 import { fanout, single } from './fanout';
 
@@ -172,14 +172,15 @@ export function registerImagesTools(server: McpServer, ctx: ToolContext): void {
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   }, async (args) => guard(async () => {
     const targets = ctx.registry.resolveTargets(normLamps(args.lamps));
-    if (args.confirm === undefined) {
-      const seen = await fanout(ctx, targets.map((l) => l.deviceId), READ, async (c) =>
+    const ids = targets.map((l) => l.deviceId);
+    const ask = await confirmTargets(ctx, 'image_delete', args, args.confirm, args.id, ids, async () => {
+      const seen = await fanout(ctx, ids, READ, async (c) =>
         ({ label: (await listImages(c)).find((e) => e.name === args.id)?.label ?? null }));
       const what = seen.map((r) => `${r.lamp}${r.ok && r.label ? ` ("${r.label}")` : ''}`).join(', ');
-      return result(ctx.confirm.request('image_delete', args, `Delete the saved image ${args.id} from ${what}. This can't be undone.`));
-    }
-    if (!ctx.confirm.consume('image_delete', args, args.confirm)) return failure(CONFIRM_REFUSED);
-    return result({ results: await fanout(ctx, targets.map((l) => l.deviceId), IMAGES, async (c) => {
+      return `Delete the saved image ${args.id} from ${what}. This can't be undone.`;
+    });
+    if (ask) return result(ask);
+    return result({ results: await fanout(ctx, ids, IMAGES, async (c) => {
       await c.send('DELETE', `/api/images/${enc(args.id)}`);
       return { deleted: args.id };
     }) });

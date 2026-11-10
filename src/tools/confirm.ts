@@ -74,3 +74,19 @@ export function confirmContent(
   const fresh = ctx.confirm.request(tool, bound, summary);
   return confirm === undefined ? fresh : { ...fresh, refused: CONFIRM_REFUSED };
 }
+
+/**
+ * `confirmContent` for deletes over a resolved lamp set: the token covers the sorted deviceIds, so a
+ * confirmed call acts only on the lamps the user saw; a changed set (e.g. `"all"` after a lamp was
+ * added) is refused with a fresh confirmation. The summary is only built when one is returned.
+ */
+export async function confirmTargets(
+  ctx: { confirm: Confirmations }, tool: string, args: object, confirm: string | undefined,
+  what: unknown, ids: string[], summary: () => Promise<string> | string,
+): Promise<ConfirmationRequest | (ConfirmationRequest & { refused: string }) | undefined> {
+  const sorted = [...ids].sort();
+  const bound = { ...args, __content: digest({ what, ids: sorted }), __replacing: sorted };
+  if (confirm !== undefined && ctx.confirm.consume(tool, bound, confirm)) return undefined;
+  const fresh = ctx.confirm.request(tool, bound, await summary());
+  return confirm === undefined ? fresh : { ...fresh, refused: CONFIRM_REFUSED };
+}

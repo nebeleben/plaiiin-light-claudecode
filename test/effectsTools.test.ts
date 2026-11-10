@@ -162,6 +162,24 @@ describe('effect_upload / effect_delete', () => {
     expect(r.results[0]).toMatchObject({ ok: true });
     expect(l.state.effects.has('red')).toBe(false);
   });
+
+  it('effect_delete binds the confirmed lamps: a lamp added after the ask is not deleted from', async () => {
+    const t = await harness();
+    const a = await t.addFake({ deviceId: 'aaaaaaaaaaaa', name: 'Alpha' });
+    a.state.effects.set('red', SRC);
+    const ask = await t.call('effect_delete', { lamps: 'all', name: 'red' });
+    expect(ask.summary).toContain('Alpha');
+    const b = await t.addFake({ deviceId: 'bbbbbbbbbbbb', name: 'Beta' });
+    b.state.effects.set('red', SRC);
+    const r = await t.call('effect_delete', { lamps: 'all', name: 'red', confirm: ask.confirm });
+    expect(r).toMatchObject({ needsConfirmation: true, refused: expect.stringMatching(/invalid, expired/) });
+    expect(r.summary).toContain('Beta');
+    expect(a.state.effects.has('red')).toBe(true);
+    expect(b.state.effects.has('red')).toBe(true);
+    const done = await t.call('effect_delete', { lamps: 'all', name: 'red', confirm: r.confirm });
+    expect(done.results).toHaveLength(2);
+    expect(b.state.effects.has('red')).toBe(false);
+  });
 });
 
 describe('effect tunes', () => {

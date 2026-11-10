@@ -103,12 +103,31 @@ describe('image management', () => {
     expect(ask).toMatchObject({ needsConfirmation: true });
     expect(a.state.images.has('img-001')).toBe(true);
     // a token for img-001 can't delete img-002
-    expect(await t.call('image_delete', { lamps: 'Alpha', id: 'img-002', confirm: ask.confirm })).toMatchObject({ ok: false });
+    expect(await t.call('image_delete', { lamps: 'Alpha', id: 'img-002', confirm: ask.confirm })).toMatchObject({ needsConfirmation: true, refused: expect.any(String) });
+    expect(a.state.images.has('img-002')).toBe(true);
     const ask2 = await t.call('image_delete', { lamps: 'Alpha', id: 'img-001' });
     const r = await t.call('image_delete', { lamps: 'Alpha', id: 'img-001', confirm: ask2.confirm });
     expect(r.results[0]).toMatchObject({ ok: true, deleted: 'img-001' });
     expect(a.state.images.has('img-001')).toBe(false);
     expect(a.state.images.has('img-002')).toBe(true);
+  });
+
+  it('image_delete binds the confirmed lamps: a lamp added after the ask is not deleted from', async () => {
+    const t = await harness();
+    const a = await t.addFake({ deviceId: 'aaaaaaaaaaaa', name: 'Alpha', grid: { w: 2, h: 2 } });
+    a.state.images.set('img-001', { w: 2, h: 2, data: Buffer.from(RGB2) });
+    const ask = await t.call('image_delete', { lamps: 'all', id: 'img-001' });
+    expect(ask).toMatchObject({ needsConfirmation: true });
+    const b = await t.addFake({ deviceId: 'bbbbbbbbbbbb', name: 'Beta', grid: { w: 2, h: 2 } });
+    b.state.images.set('img-001', { w: 2, h: 2, data: Buffer.from(RGB2) });
+    const r = await t.call('image_delete', { lamps: 'all', id: 'img-001', confirm: ask.confirm });
+    expect(r).toMatchObject({ needsConfirmation: true, refused: expect.stringMatching(/invalid, expired/) });
+    expect(r.summary).toContain('Beta');
+    expect(a.state.images.has('img-001')).toBe(true);
+    expect(b.state.images.has('img-001')).toBe(true);
+    const done = await t.call('image_delete', { lamps: 'all', id: 'img-001', confirm: r.confirm });
+    expect(done.results).toHaveLength(2);
+    expect(b.state.images.has('img-001')).toBe(false);
   });
 
   it('image_get returns a PNG of the image', async () => {
