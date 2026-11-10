@@ -41,6 +41,16 @@ describe('effects tools: read side', () => {
   });
 });
 
+describe('lamp grid sanity', () => {
+  it('lamp_form_prompt and effect_preview refuse a lamp grid with a side over 4096', async () => {
+    const t = await harness();
+    await t.addFake({ deviceId: 'aaaaaaaaaaaa', name: 'Alpha', grid: { w: 5000, h: 1 } });
+    expect(await t.call('lamp_form_prompt', { lamp: 'Alpha' })).toMatchObject({ ok: false, reason: expect.stringMatching(/grid 5000×1.*at most 4096/) });
+    const p = await t.raw('effect_preview', { lamp: 'Alpha', source: SRC });
+    expect(p).toMatch(/grid 5000×1.*at most 4096/);
+  });
+});
+
 describe('effect_validate / effect_compile', () => {
   it("returns the lamp's error text verbatim", async () => {
     const t = await harness();

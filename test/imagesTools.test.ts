@@ -130,6 +130,14 @@ describe('image management', () => {
     expect(b.state.images.has('img-001')).toBe(false);
   });
 
+  it('a lamp-reported grid larger than 4096 px a side or 65535 pixels is refused clearly', async () => {
+    const t = await harness();
+    const a = await t.addFake({ deviceId: 'aaaaaaaaaaaa', name: 'Alpha', grid: { w: 300, h: 300 } });
+    const r = await t.call('image_draw', { lamps: 'Alpha', pixels: [['#ff0000']] });
+    expect(r.results[0]).toMatchObject({ ok: false, reason: expect.stringMatching(/grid 300×300.*65535 pixels/) });
+    expect(a.state.requests.some((x) => x.path === '/api/frame')).toBe(false);
+  });
+
   it('image_get returns a PNG of the image', async () => {
     const t = await harness();
     const a = await t.addFake({ deviceId: 'aaaaaaaaaaaa', name: 'Alpha', grid: { w: 2, h: 2 } });

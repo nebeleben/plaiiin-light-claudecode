@@ -9,6 +9,7 @@ import {
 } from '../lamp/scripts';
 import { LampHttpError } from '../lamp/errors';
 import { framesToPngStrip } from '../preview/png';
+import { apiGrid, checkGrid } from '../lamp/grid';
 import { MAX_FRAMES, previewScript, type Rgb } from '../preview/shade';
 import type { FleetLamp } from '../store/fleet';
 import { Library } from '../store/library';
@@ -150,7 +151,7 @@ export function registerEffectsTools(server: McpServer, ctx: ToolContext): void 
     annotations: ro,
   }, async ({ lamp }) => guard(() => single(ctx, lamp, READ, async (c, l) => {
     const fp = await c.get<{ form?: string; effective?: string; default?: string; hasOverride?: boolean; mode?: string; byMode?: object }>('/api/form-prompt');
-    const grid = l.grid ?? await c.get<{ logicalW?: number; logicalH?: number }>('/api').then((a) => (a.logicalW && a.logicalH ? { w: a.logicalW, h: a.logicalH } : undefined));
+    const grid = l.grid ? checkGrid(l.grid) : apiGrid(await c.get<{ logicalW?: number; logicalH?: number }>('/api'));
     return {
       form: fp.form ?? l.form ?? null, prompt: fp.effective ?? fp.default ?? '', customised: fp.hasOverride ?? false,
       ...(fp.mode ? { mode: fp.mode } : {}), ...(fp.byMode ? { byMode: fp.byMode } : {}),
@@ -199,7 +200,7 @@ export function registerEffectsTools(server: McpServer, ctx: ToolContext): void 
     let base: Rgb | undefined;
     if (lamp) {
       const [r] = await fanout(ctx, [lamp], READ, async (c, l) => {
-        const g = l.grid ?? await c.get<{ logicalW?: number; logicalH?: number }>('/api').then((a) => (a.logicalW && a.logicalH ? { w: a.logicalW, h: a.logicalH } : undefined));
+        const g = l.grid ? checkGrid(l.grid) : apiGrid(await c.get<{ logicalW?: number; logicalH?: number }>('/api'));
         const bc = await c.get<{ color?: number[] }>('/api/base_color').catch(() => undefined);
         return { grid: g, base: bc?.color?.length === 3 ? { r: bc.color[0]!, g: bc.color[1]!, b: bc.color[2]! } : undefined };
       });

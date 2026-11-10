@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { allows, refusal, type Need } from '../lamp/access';
 import type { LampClient } from '../lamp/client';
+import { apiGrid, checkGrid } from '../lamp/grid';
 import { LampHttpError } from '../lamp/errors';
 import { gridToRgb, readPng, resizeToRgb, toPng, type Rgba } from '../images/convert';
 import type { FleetLamp } from '../store/fleet';
@@ -37,8 +38,9 @@ const enc = (n: string) => encodeURIComponent(n);
 /** The lamp's logical grid, live (`POST /api/frame` must match it exactly), else the fleet's cached one. */
 export async function gridOf(c: LampClient, l: FleetLamp): Promise<{ w: number; h: number }> {
   const a = await c.get<{ logicalW?: number; logicalH?: number }>('/api').catch(() => undefined);
-  if (a?.logicalW && a.logicalH) return { w: a.logicalW, h: a.logicalH };
-  if (l.grid) return l.grid;
+  const live = apiGrid(a);
+  if (live) return live;
+  if (l.grid) return checkGrid(l.grid);
   throw new Error('the lamp reports no grid size');
 }
 

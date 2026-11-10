@@ -8,6 +8,9 @@ interface RawResponse { status: number; headers: Record<string, string>; data: B
 
 class TimeoutError extends Error {}
 
+/** Largest response body read from a lamp (OTA info, images and script sources are far smaller). */
+export const MAX_BODY_BYTES = 8 * 1024 * 1024;
+
 /**
  * HTTP client for one lamp. One keep-alive socket (maxSockets 1: the ESP32 httpd has very few
  * slots) and a promise queue, so at most one request is ever in flight per lamp.
@@ -131,7 +134,14 @@ export class LampClient {
         { host: this.ep.host, port: this.ep.port, path, method, headers, agent: this.agent },
         (res) => {
           const chunks: Buffer[] = [];
-          res.on('data', (c: Buffer) => chunks.push(c));
+          let size = 0;
+          res.on('data', (c: Buffer) => {
+            size += c.length;
+            if (size <= MAX_BODY_BYTES) { chunks.push(c); return; }
+            // Stop reading and drop the socket: a lamp never sends this much.
+            done(() => reject(new LampHttpError(502, `the lamp's response is larger than ${MAX_BODY_BYTES / 1024 / 1024} MB`)));
+            req.destroy();
+          });
           res.on('end', () => done(() => {
             const h: Record<string, string> = {};
             for (const [k, v] of Object.entries(res.headers)) if (v !== undefined) h[k.toLowerCase()] = Array.isArray(v) ? v.join(', ') : v;

@@ -116,7 +116,7 @@ export function registerFleetTools(server: McpServer, ctx: ToolContext): void {
       'share QR code), or `url` (a pasted http://<lamp>/config?t=… link). With no source the clipboard is used. The key ' +
       'is stored in the macOS Keychain and never returned; the result shows the lamp name, role and permissions.',
     inputSchema: {
-      url: z.string().optional().describe('Share link http(s)://<lamp>/config?t=<key> (may be inside other text)'),
+      url: z.string().optional().describe('Share link http://<lamp>/config?t=<key> (may be inside other text)'),
       qrImagePath: z.string().optional().describe('Absolute path to a PNG or JPEG of the share QR code'),
       fromClipboard: z.boolean().optional().describe('Read the share link from the clipboard (macOS)'),
     },
@@ -128,7 +128,7 @@ export function registerFleetTools(server: McpServer, ctx: ToolContext): void {
     let from: string;
     if (url !== undefined) { text = url; from = 'the url'; }
     else if (qrImagePath !== undefined) {
-      text = decodeQrImage(qrImagePath);
+      try { text = decodeQrImage(qrImagePath); } catch (e) { return failure(`${qrImagePath}: ${errorText(e)}`); }
       from = 'the QR image';
       if (text === undefined) return failure(`no QR code could be read from ${qrImagePath}`);
     } else { text = await readClipboard(); from = 'the clipboard'; }

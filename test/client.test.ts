@@ -21,6 +21,25 @@ describe('LampClient', () => {
     expect(info.deviceId).toBe('aabbccddeeff');
   });
 
+  it('refuses a response body over 8 MB (and the next request still works)', async () => {
+    const { client, lamp } = await setup({ role: 'admin' }, undefined, false);
+    lamp.state.override = (_req, res, path) => {
+      if (path !== '/api/big') return false;
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+      const chunk = Buffer.alloc(1024 * 1024, 1);
+      let n = 0;
+      const pump = () => { while (n < 9) { n++; if (!res.write(chunk)) return res.once('drain', pump); } res.end(); };
+      res.on('error', () => undefined);
+      pump();
+      return true;
+    };
+    const e = await client.getBinary('/api/big').catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(LampHttpError);
+    expect((e as Error).message).toMatch(/larger than 8 MB/);
+    const ok = await client.getBinary('/api').then((r) => r.data.length);
+    expect(ok).toBeGreaterThan(0);
+  });
+
   it('POST power works with the token', async () => {
     const { client, lamp } = await setup({ role: 'ai', perms: ['control'] });
     await client.send('POST', '/api/power', { on: true });
