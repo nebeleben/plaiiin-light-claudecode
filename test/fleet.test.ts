@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FleetStore, type FleetLamp } from '../src/store/fleet';
@@ -67,6 +67,40 @@ describe('FleetStore', () => {
     expect(files).not.toContain('fleet.json');
     const bad = files.find((n) => n.startsWith('fleet.json.bad-'))!;
     expect(readFileSync(join(d, bad), 'utf8')).toBe('{"lamps": [ broken');
+  });
+
+  it.skipIf(process.getuid?.() === 0)('never overwrites a fleet.json it cannot read', () => {
+    const d = tmp();
+    const file = join(d, 'fleet.json');
+    writeFileSync(file, JSON.stringify({ lamps: [lamp()] }));
+    chmodSync(file, 0o000);
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const f = new FleetStore(d);
+      expect(f.list()).toEqual([]);
+      expect(err).toHaveBeenCalledTimes(1);
+      expect(String(err.mock.calls[0]![0])).toMatch(/can't read .*fleet\.json/);
+      expect(() => f.upsert(lamp({ deviceId: '112233445566', name: 'Desk' }))).toThrow(/not overwriting/);
+      expect(() => f.remove('aabbccddeeff')).not.toThrow();
+    } finally { err.mockRestore(); }
+    chmodSync(file, 0o600);
+    expect(JSON.parse(readFileSync(file, 'utf8')).lamps.map((l: FleetLamp) => l.name)).toEqual(['Kitchen']);
+    expect(readdirSync(d)).toEqual(['fleet.json']);
+  });
+
+  it('moves a fleet.json without a lamps list aside instead of overwriting it', () => {
+    const d = tmp();
+    writeFileSync(join(d, 'fleet.json'), '{"lamp": []}');
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const f = new FleetStore(d);
+      expect(f.list()).toEqual([]);
+      expect(err).toHaveBeenCalledTimes(1);
+      f.upsert(lamp());
+    } finally { err.mockRestore(); }
+    const bad = readdirSync(d).find((n) => n.startsWith('fleet.json.bad-'))!;
+    expect(readFileSync(join(d, bad), 'utf8')).toBe('{"lamp": []}');
+    expect(new FleetStore(d).list().map((l) => l.name)).toEqual(['Kitchen']);
   });
 
   it('drops entries without a deviceId or name', () => {

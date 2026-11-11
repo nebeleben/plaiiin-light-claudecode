@@ -27,6 +27,8 @@ function clean(l: FleetLamp): FleetLamp {
 export class FleetStore {
   private readonly file: string;
   private lamps: FleetLamp[];
+  /** Set when fleet.json exists but couldn't be read or moved aside: saving would destroy it. */
+  private locked: string | null = null;
 
   constructor(private readonly dir: string) {
     this.file = join(dir, 'fleet.json');
@@ -59,23 +61,25 @@ export class FleetStore {
   }
 
   /**
-   * Missing file → empty. Unparsable JSON → moved aside to `fleet.json.bad-<ms>` (one stderr line) and
-   * start empty, so the server still comes up. Entries without a deviceId or name are dropped.
+   * Missing file → empty. A file that exists but can't be read (permissions, I/O error) → empty and
+   * locked: saves throw, so the file on disk is never replaced by a partial list. Unparsable JSON, or
+   * JSON without a `lamps` list → moved aside to `fleet.json.bad-<ms>` and start empty (locked
+   * instead if the move fails). One stderr line either way, so the server still comes up. Entries
+   * without a deviceId or name are dropped.
    */
   private load(): FleetLamp[] {
     let text: string;
-    try { text = readFileSync(this.file, 'utf8'); } catch { return []; }
-    let j: unknown;
     try {
-      j = JSON.parse(text);
-    } catch {
-      const bad = `${this.file}.bad-${Date.now()}`;
-      try { renameSync(this.file, bad); } catch { /* the next save replaces it anyway */ }
-      process.stderr.write(`plaiiin-lamps: ${this.file} is not valid JSON; moved it to ${bad} and started with no lamps\n`);
-      return [];
+      text = readFileSync(this.file, 'utf8');
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') return [];
+      return this.lock(`can't read ${this.file} (${code ?? String(e)})`);
     }
+    let j: unknown;
+    try { j = JSON.parse(text); } catch { return this.moveAside('is not valid JSON'); }
     const lamps = (j as { lamps?: unknown } | null)?.lamps;
-    if (!Array.isArray(lamps)) return [];
+    if (!Array.isArray(lamps)) return this.moveAside('has no "lamps" list');
     return lamps
       .filter((l): l is FleetLamp => !!l && typeof l === 'object'
         && typeof (l as FleetLamp).deviceId === 'string' && !!(l as FleetLamp).deviceId
@@ -83,7 +87,27 @@ export class FleetStore {
       .map(clean);
   }
 
+  private moveAside(why: string): FleetLamp[] {
+    const bad = `${this.file}.bad-${Date.now()}`;
+    try {
+      renameSync(this.file, bad);
+    } catch (e) {
+      return this.lock(`${this.file} ${why} and couldn't be moved aside (${(e as NodeJS.ErrnoException).code ?? String(e)})`);
+    }
+    process.stderr.write(`plaiiin-lamps: ${this.file} ${why}; moved it to ${bad} and started with no lamps\n`);
+    return [];
+  }
+
+  private lock(why: string): FleetLamp[] {
+    this.locked = why;
+    process.stderr.write(`plaiiin-lamps: ${why}; started with no lamps and won't save until it is fixed\n`);
+    return [];
+  }
+
   private save(): void {
+    if (this.locked) {
+      throw new Error(`${this.locked}; not overwriting it — fix the file (or move it away) and restart Claude Code`);
+    }
     mkdirSync(this.dir, { recursive: true });
     const tmp = `${this.file}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify({ lamps: this.lamps }, null, 2) + '\n');
