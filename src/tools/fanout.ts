@@ -1,4 +1,4 @@
-import { refusal, type Need } from '../lamp/access';
+import type { Need } from '../lamp/access';
 import type { LampClient } from '../lamp/client';
 import type { FleetLamp } from '../store/fleet';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -21,7 +21,7 @@ export async function fanout<T extends object>(
   const targets = ctx.registry.resolveTargets(lamps);
   return Promise.all(targets.map(async (l): Promise<LampResult<T>> => {
     const base = { lamp: l.name, deviceId: l.deviceId };
-    const refused = refusal(l, need);
+    const refused = await ctx.registry.refusalFresh(l, need);
     if (refused) return { ...base, ok: false, skipped: true, reason: refused };
     try {
       const r = await ctx.registry.call(l.deviceId, fn);
@@ -51,7 +51,7 @@ export async function swarmFanout<T extends object>(
   await Promise.all([...swarmGroups(ctx, grouped).values()].map(async (members) => {
     const allowed: FleetLamp[] = [];
     for (const l of members) {
-      const refused = refusal(l, need);
+      const refused = await ctx.registry.refusalFresh(l, need);
       if (refused) out.set(l.deviceId, { lamp: l.name, deviceId: l.deviceId, ok: false, skipped: true, reason: refused });
       else allowed.push(l);
     }

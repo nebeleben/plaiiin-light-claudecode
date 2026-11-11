@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { refusal, type Need } from '../lamp/access';
+import type { Need } from '../lamp/access';
 import type { LampClient } from '../lamp/client';
 import {
   builtIn, listing, present, putSource, putTunes, readTunes, values, type ParamSchema,
@@ -64,7 +64,7 @@ async function planWrites(ctx: ToolContext, targets: FleetLamp[], name: string, 
   const done = new Map<string, LampResult<object>>();
   await Promise.all(targets.map(async (l) => {
     const base = { lamp: l.name, deviceId: l.deviceId };
-    const refused = refusal(l, EFFECTS);
+    const refused = await ctx.registry.refusalFresh(l, EFFECTS);
     if (refused) { done.set(l.deviceId, { ...base, ok: false, skipped: true, reason: refused }); return; }
     try {
       const state = await ctx.registry.call(l.deviceId, async (c): Promise<WriteState | 'builtin'> => {
@@ -308,7 +308,7 @@ export function registerEffectsTools(server: McpServer, ctx: ToolContext): void 
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   }, async (args) => guard(async () => {
     const from = ctx.registry.lookup(args.from);
-    const refused = refusal(from, READ);
+    const refused = await ctx.registry.refusalFresh(from, READ);
     if (refused) return failure(`${from.name}: ${refused}`);
     let src: string | undefined;
     let tunes: Record<string, number> | undefined;

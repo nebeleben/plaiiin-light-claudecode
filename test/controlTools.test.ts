@@ -21,13 +21,13 @@ describe('control tools', () => {
     expect(b.state.on).toBe(true);
   });
 
-  it('an AI key without control is refused locally and the lamp sees no request', async () => {
+  it('an AI key without control is refused locally after a whoami re-check; the lamp never sees the request', async () => {
     const t = await harness();
     const l = await t.addFake({ deviceId: 'ai0000000001', name: 'Desk', role: 'ai', perms: ['images'] });
     const before = l.state.requests.length;
     const r = await t.call('lamp_power', { lamps: ['Desk'], on: true });
     expect(r.results).toEqual([{ lamp: 'Desk', deviceId: 'ai0000000001', ok: false, skipped: true, reason: "not permitted by this lamp's AI key (needs control)" }]);
-    expect(l.state.requests.length).toBe(before);
+    expect(l.state.requests.slice(before).map((q) => `${q.method} ${q.path}`)).toEqual(['GET /api/whoami']);
     expect(l.state.on).toBe(false);
   });
 
@@ -37,6 +37,33 @@ describe('control tools', () => {
     l.state.perms = []; // key edited in the app after we read whoami
     const r = await t.call('lamp_power', { lamps: 'Desk', on: true });
     expect(r.results[0]).toMatchObject({ ok: false, reason: "not permitted by this lamp's AI key (needs control)" });
+  });
+
+  it('a permission added in the app after we read whoami is picked up before refusing', async () => {
+    const t = await harness();
+    const l = await t.addFake({ deviceId: 'ai0000000011', name: 'Desk', role: 'ai', perms: ['images'] });
+    l.state.perms = ['images', 'control']; // owner added control in the Share tab
+    const r = await t.call('lamp_power', { lamps: 'Desk', on: true });
+    expect(r.results[0]).toMatchObject({ ok: true, on: true });
+    expect(t.fleet.get('Desk')?.perms).toEqual(['images', 'control']);
+  });
+
+  it('a permission removed in the app is re-read after the lamp refuses', async () => {
+    const t = await harness();
+    const l = await t.addFake({ deviceId: 'ai0000000012', name: 'Desk', role: 'ai', perms: ['control', 'images'] });
+    l.state.perms = ['images'];
+    const r = await t.call('lamp_power', { lamps: 'Desk', on: true });
+    expect(r.results[0]).toMatchObject({ ok: false, reason: "not permitted by this lamp's AI key (needs control)" });
+    expect(t.fleet.get('Desk')?.perms).toEqual(['images']);
+  });
+
+  it('an only-while-on key on a switched-off lamp is refused as "lamp is off"', async () => {
+    const t = await harness();
+    await t.addFake({ deviceId: 'ai0000000013', name: 'Desk', role: 'ai', perms: ['control'], onlyWhenOn: true });
+    const r = await t.call('lamp_brightness', { lamps: 'Desk', value: 50 });
+    expect(r.results[0].ok).toBe(false);
+    expect(r.results[0].reason).toMatch(/lamp is off/);
+    expect(r.results[0].reason).not.toMatch(/needs control/);
   });
 
   it('Review Focus 2: one wedged lamp times out alone', async () => {

@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { allows, refusal, type Need } from '../lamp/access';
+import { allows, type Need } from '../lamp/access';
 import type { LampClient } from '../lamp/client';
 import { LampHttpError } from '../lamp/errors';
 import { builtIn, listing, present, readTunes } from '../lamp/scripts';
@@ -189,7 +189,7 @@ export function registerScenesTools(server: McpServer, ctx: ToolContext): void {
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   }, async (args) => guard(async () => {
     const l = ctx.registry.lookup(args.lamp);
-    const refused = refusal(l, SCENES);
+    const refused = await ctx.registry.refusalFresh(l, SCENES);
     if (refused) return failure(`${l.name}: ${refused}`);
     const existing = await ctx.registry.call(l.deviceId, (c) => getScene(c, args.name)).catch(() => null);
     if (existing) {
@@ -227,7 +227,7 @@ export function registerScenesTools(server: McpServer, ctx: ToolContext): void {
     const skipped: Array<{ lamp: string; deviceId: string; ok: false; skipped: true; reason: string }> = [];
     const checkable: FleetLamp[] = [];
     for (const l of targets) {
-      const refused = refusal(l, SCENES);
+      const refused = await ctx.registry.refusalFresh(l, SCENES);
       if (refused) skipped.push({ lamp: l.name, deviceId: l.deviceId, ok: false, skipped: true, reason: refused });
       else checkable.push(l);
     }
@@ -261,7 +261,7 @@ export function registerScenesTools(server: McpServer, ctx: ToolContext): void {
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   }, async (args) => guard(async () => {
     const from = ctx.registry.lookup(args.from);
-    const refused = refusal(from, READ);
+    const refused = await ctx.registry.refusalFresh(from, READ);
     if (refused) return failure(`${from.name}: ${refused}`);
     let b: Bundle;
     try {

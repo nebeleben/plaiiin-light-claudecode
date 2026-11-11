@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { refusal, type Need } from '../lamp/access';
+import type { Need } from '../lamp/access';
 import type { LampClient } from '../lamp/client';
 import { LampUnreachable } from '../lamp/errors';
 import { assetName, downloadAsset, isNewer, latestRelease, MAX_SUMS_BYTES, parseSha256Sums, type FirmwareRelease } from '../ota/releases';
@@ -96,7 +96,7 @@ export function registerOtaTools(server: McpServer, ctx: ToolContext): void {
     const out = new Map<string, LampResult<Record<string, unknown>>>();
     const allowed: FleetLamp[] = [];
     for (const l of targets) {
-      const refused = refusal(l, OTA);
+      const refused = await ctx.registry.refusalFresh(l, OTA);
       if (refused) out.set(l.deviceId, { lamp: l.name, deviceId: l.deviceId, ok: false, skipped: true, reason: refused });
       else allowed.push(l);
     }

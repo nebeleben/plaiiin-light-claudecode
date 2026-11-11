@@ -68,7 +68,8 @@ describe('effect_validate / effect_compile', () => {
     await t.addFake({ deviceId: 'uuuuuuuuuuuu', name: 'User', role: 'user' });
     const before = ai.state.requests.length;
     expect(await t.call('effect_validate', { lamp: 'Desk', source: SRC })).toMatchObject({ ok: false, reason: "not permitted by this lamp's AI key (needs effects)" });
-    expect(ai.state.requests.length).toBe(before);
+    // only the whoami re-check reaches the lamp, never the refused request
+    expect(ai.state.requests.slice(before).map((r) => `${r.method} ${r.path}`)).toEqual(['GET /api/whoami']);
     expect(await t.call('effect_validate', { lamp: 'User', source: SRC })).toMatchObject({ ok: false, reason: "not permitted: needs creator access, this lamp's key is user" });
   });
 });

@@ -3,11 +3,12 @@ import { basename } from 'node:path';
 import { z } from 'zod';
 import WebSocket from 'ws';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { refusal, type Need } from '../lamp/access';
+import type { Need } from '../lamp/access';
 import { CLEAR_FRAME, encodeColorFrame, prepareSource, type FrameSource, type PreparedSource, type StreamSource } from '../stream/sources';
 import { scrub } from '../util/scrub';
 import { errorText, explain, failure, guard, lampsArg, normLamps, result, type ToolContext } from './context';
 import { gridOf } from './images';
+import { lanLookup } from '../lamp/lookup';
 
 /** `/ws` (lampos/docs/sharing-api.md): any share key with user access; AI keys need `stream`. */
 const STREAM: Need = { perm: 'stream', minRole: 'user' };
@@ -57,7 +58,7 @@ function openSocket(host: string, port: number, token: string | undefined): Prom
   const url = `ws://${h}:${port}/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`;
   const clean = (s: string) => scrub(token ? s.split(token).join('***').split(encodeURIComponent(token)).join('***') : s);
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(url, { handshakeTimeout: CONNECT_TIMEOUT_MS, perMessageDeflate: false });
+    const ws = new WebSocket(url, { handshakeTimeout: CONNECT_TIMEOUT_MS, perMessageDeflate: false, lookup: lanLookup as never });
     let settled = false;
     const fail = (why: string) => { if (!settled) { settled = true; ws.terminate(); reject(new Error(clean(why))); } };
     ws.on('error', (e) => fail(`can't open the stream to ${host}:${port}: ${e.message}`));
@@ -238,11 +239,12 @@ export function registerStreamTools(server: McpServer, ctx: ToolContext): Stream
       return f;
     };
     const conns: Conn[] = [];
-    const unlock = await streams.lock(targets.filter((l) => !refusal(l, STREAM)).map((l) => l.deviceId));
+    const refusals = new Map(await Promise.all(targets.map(async (l) => [l.deviceId, await ctx.registry.refusalFresh(l, STREAM)] as const)));
+    const unlock = await streams.lock(targets.filter((l) => !refusals.get(l.deviceId)).map((l) => l.deviceId));
     try {
       const results = await Promise.all(targets.map(async (l) => {
         const base = { lamp: l.name, deviceId: l.deviceId };
-        const refused = refusal(l, STREAM);
+        const refused = refusals.get(l.deviceId);
         if (refused) return { ...base, ok: false as const, skipped: true as const, reason: refused };
         try {
           const grid = await ctx.registry.call(l.deviceId, (c, fl) => gridOf(c, fl));

@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { allows, refusal, type Need } from '../lamp/access';
+import { allows, type Need } from '../lamp/access';
 import type { LampClient } from '../lamp/client';
 import { apiGrid, checkGrid } from '../lamp/grid';
 import { LampHttpError } from '../lamp/errors';
@@ -217,7 +217,7 @@ export function registerImagesTools(server: McpServer, ctx: ToolContext): void {
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async (args) => guard(async () => {
     const from = ctx.registry.lookup(args.from);
-    const refused = refusal(from, READ);
+    const refused = await ctx.registry.refusalFresh(from, READ);
     if (refused) return failure(`${from.name}: ${refused}`);
     let img: Awaited<ReturnType<typeof fetchImage>>;
     try {

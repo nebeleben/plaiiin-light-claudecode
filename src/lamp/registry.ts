@@ -1,6 +1,6 @@
 import { LampClient } from './client';
 import { LampHttpError, LampUnreachable } from './errors';
-import { allows, SWARM_READ } from './access';
+import { allows, refusal, SWARM_READ, type Need } from './access';
 import { resolveDevice, type Discovered } from './discovery';
 import type { ShareLink } from './shareLink';
 import type { FleetLamp, FleetRole, FleetStore } from '../store/fleet';
@@ -147,6 +147,8 @@ export class Registry {
     try {
       return await fn(client, lamp);
     } catch (e) {
+      // The owner may have changed this AI key in the app: re-read it so later checks are current.
+      if (e instanceof LampHttpError && e.status === 403 && lamp.role === 'ai') await this.refreshOne(lamp.deviceId);
       if (!(e instanceof LampUnreachable)) throw e;
       const d = await this.resolve(lamp.deviceId).catch(() => undefined);
       if (!d || (d.host === lamp.host && d.port === lamp.port)) throw e;
@@ -196,6 +198,31 @@ export class Registry {
     } finally {
       c.destroy();
     }
+  }
+
+  /** Re-read one lamp's access (whoami) into the fleet. Undefined when it can't be read; the entry is kept. */
+  async refreshOne(deviceId: string): Promise<FleetLamp | undefined> {
+    try {
+      const { lamp, client } = await this.client(deviceId);
+      const who = await client.get<Whoami>('/api/whoami');
+      const cur = this.fleet.get(lamp.deviceId) ?? lamp;
+      const next = { ...cur, ...accessFrom(who), lastSeen: now() };
+      this.fleet.upsert(next);
+      return this.fleet.get(lamp.deviceId);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * `refusal()` with a second look for AI keys: the stored permissions may predate an edit in the
+   * app, so a refusal is re-checked against a fresh whoami before it stands.
+   */
+  async refusalFresh(l: FleetLamp, need: Need): Promise<string | undefined> {
+    const r = refusal(l, need);
+    if (!r || l.role !== 'ai') return r;
+    const fresh = await this.refreshOne(l.deviceId);
+    return fresh ? refusal(fresh, need) : r;
   }
 
   /** Re-read whoami for every lamp (server start). Unreachable or refusing lamps keep their stored access. */

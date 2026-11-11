@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { refusal, type Need } from '../lamp/access';
+import type { Need } from '../lamp/access';
 import { discover as mdnsDiscover, type Discovered } from '../lamp/discovery';
 import { decodeQrImage, parseShareLink } from '../lamp/shareLink';
 import { CONFIRM_REFUSED } from './confirm';
@@ -186,7 +186,7 @@ export function registerFleetTools(server: McpServer, ctx: ToolContext): void {
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   }, async (args) => guard(async () => {
     const l = ctx.registry.lookup(args.lamp);
-    const refused = refusal(l, RENAME);
+    const refused = await ctx.registry.refusalFresh(l, RENAME);
     if (refused) return failure(refused);
     if (args.confirm === undefined) {
       return result(ctx.confirm.request('lamp_rename', args,

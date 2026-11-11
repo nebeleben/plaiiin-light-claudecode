@@ -1,5 +1,6 @@
 import { Agent, request as httpRequest } from 'node:http';
 import { LampHttpError, LampUnreachable } from './errors';
+import { lanLookup } from './lookup';
 import { scrub } from '../util/scrub';
 
 export interface LampEndpoint { host: string; port: number; token?: string }
@@ -131,7 +132,7 @@ export class LampClient {
       let timer: NodeJS.Timeout | undefined;
       const done = (fn: () => void) => { clearTimeout(timer); fn(); };
       const req = httpRequest(
-        { host: this.ep.host, port: this.ep.port, path, method, headers, agent: this.agent },
+        { host: this.ep.host, port: this.ep.port, path, method, headers, agent: this.agent, lookup: lanLookup as never },
         (res) => {
           const chunks: Buffer[] = [];
           let size = 0;

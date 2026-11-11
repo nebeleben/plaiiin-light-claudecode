@@ -53,7 +53,11 @@ export function errorText(e: unknown): string {
 /** Map an error from a lamp call to the reason a tool reports (never a bare 403). */
 export function explain(e: unknown, lamp: FleetLamp, need?: Need): string {
   if (e instanceof LampHttpError && e.status === 403) {
-    if (lamp.role === 'ai') return `not permitted by this lamp's AI key (needs ${need?.perm ?? `${need?.minRole ?? 'user'} access`})`;
+    if (lamp.role === 'ai') {
+      if (/lamp is off/i.test(e.message)) return 'the lamp is off and this AI key only works while it is on (switching it on is allowed)';
+      if (/insufficient role/i.test(e.message)) return 'an AI key can never be granted this (owner-only)';
+      return `not permitted by this lamp's AI key (needs ${need?.perm ?? `${need?.minRole ?? 'user'} access`})`;
+    }
     return `not permitted by this lamp's ${lamp.role} key${e.message ? ` (${e.message})` : ''}`;
   }
   if (e instanceof LampHttpError && e.status === 401) return `the lamp no longer accepts the stored key (revoked?) — add it again with a new share link`;
