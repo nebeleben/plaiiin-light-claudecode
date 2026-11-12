@@ -1,11 +1,17 @@
 {
-  "name": "plaiiin",
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "plaiiin-lamps",
+  "description": "PlaiiinLight lamps for Claude Code — control, compose effects for and manage the lamps on your local network.",
   "owner": { "name": "plaiiin" },
   "plugins": [
     {
       "name": "plaiiin-lamps",
+      "description": "Control, compose for and manage PlaiiinLight lamps on your local network.",
+      "author": { "name": "plaiiin" },
+      "category": "smart-home",
       "source": "./plugin",
-      "description": "PlaiiinLight lamps for Claude Code"
+      "homepage": "https://github.com/nebeleben/plaiiin-light-claudecode",
+      "license": "Apache-2.0"
     }
   ]
 }

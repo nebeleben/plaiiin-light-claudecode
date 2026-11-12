@@ -32,10 +32,14 @@ describe('plugin packaging', () => {
     expect(manifest.name).toBe('plaiiin-lamps');
     expect(manifest.version).toBe('0.1.0');
     expect(manifest.author).toEqual({ name: 'plaiiin' });
-    expect(market.name).toBe('plaiiin');
+    expect(market.name).toBe('plaiiin-lamps');
     expect(market.owner).toEqual({ name: 'plaiiin' });
     expect(market.plugins).toHaveLength(1);
-    expect(market.plugins[0]).toMatchObject({ name: 'plaiiin-lamps', source: './plugin' });
+    expect(market.plugins[0]).toMatchObject({
+      name: 'plaiiin-lamps', source: './plugin', license: 'Apache-2.0',
+      homepage: 'https://github.com/nebeleben/plaiiin-light-claudecode',
+    });
+    expect(market.plugins[0].version).toBeUndefined();   // plugin.json is the only version source
   });
 
   it('.mcp.json starts the bundled server', () => {
