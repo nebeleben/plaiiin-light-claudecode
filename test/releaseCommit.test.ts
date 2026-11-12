@@ -1,0 +1,108 @@
+import { beforeAll, describe, expect, it } from 'vitest';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+const script = resolve(__dirname, '../scripts/release-commit.sh');
+const ENV = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com' };
+
+const sh = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, env: ENV, encoding: 'utf8' }).trim();
+/** git against a bare repository. */
+const git = (bare: string, ...args: string[]) => sh(bare, ...args);
+const ls = (bare: string, ref: string) => git(bare, 'ls-tree', '-r', '--name-only', ref).split('\n');
+const run = (repo: string, version: string, remote: string) => {
+  const r = spawnSync(script, [version, remote], { cwd: repo, env: ENV, encoding: 'utf8' });
+  return { status: r.status, stderr: r.stderr };
+};
+
+function write(repo: string, path: string, text: string) {
+  mkdirSync(join(repo, path, '..'), { recursive: true });
+  writeFileSync(join(repo, path), text);
+}
+function setVersion(repo: string, version: string) {
+  write(repo, 'package.json', JSON.stringify({ name: 'x', version }));
+  write(repo, 'plugin/.claude-plugin/plugin.json', JSON.stringify({ name: 'plaiiin-lamps', version }));
+}
+/** A repo shaped like the mirrored mcp/ tree after `npm run build`: build outputs present but git-ignored. */
+function makeRepo(version: string): string {
+  const repo = mkdtempSync(join(tmpdir(), 'relrepo-'));
+  sh(repo, 'init', '-q', '-b', 'source');
+  setVersion(repo, version);
+  write(repo, '.gitignore', 'node_modules/\nplugin/dist/\nplugin/THIRD-PARTY-NOTICES.txt\n');
+  write(repo, 'src/a.ts', 'export {};\n');
+  sh(repo, 'add', '-A');
+  sh(repo, 'commit', '-q', '-m', 'source');
+  write(repo, 'plugin/dist/index.js', '// bundle\n');
+  write(repo, 'plugin/dist/preview-worker.mjs', '// worker\n');
+  write(repo, 'plugin/THIRD-PARTY-NOTICES.txt', 'notices\n');
+  write(repo, 'node_modules/x/index.js', 'x\n');
+  write(repo, 'scratch.txt', 'untracked, not a build output\n');
+  return repo;
+}
+function makeRemote(): string {
+  const bare = mkdtempSync(join(tmpdir(), 'relremote-'));
+  sh(bare, 'init', '-q', '--bare');
+  return bare;
+}
+
+describe('release-commit.sh', () => {
+  let repo: string, remote: string;
+  beforeAll(() => { repo = makeRepo('0.1.0'); remote = makeRemote(); return () => { rmSync(repo, { recursive: true, force: true }); rmSync(remote, { recursive: true, force: true }); }; });
+
+  it('first release creates main', () => {
+    const r = run(repo, '0.1.0', remote);
+    expect(r.stderr).toBe('');
+    expect(r.status).toBe(0);
+    expect(git(remote, 'rev-list', '--count', 'main')).toBe('1');
+    expect(git(remote, 'rev-parse', 'v0.1.0^{commit}')).toBe(git(remote, 'rev-parse', 'main'));
+    expect(git(remote, 'log', '-1', '--format=%s', 'main')).toBe('Release v0.1.0');
+  });
+
+  it('release tree has the bundle and no node_modules', () => {
+    const files = ls(remote, 'main');
+    expect(files).toEqual(expect.arrayContaining(['plugin/dist/index.js', 'plugin/dist/preview-worker.mjs', 'plugin/THIRD-PARTY-NOTICES.txt', 'src/a.ts', '.gitignore']));
+    expect(files.some((f) => f.startsWith('node_modules/'))).toBe(false);
+    expect(files).not.toContain('scratch.txt');
+  });
+
+  it('leaves the source repo\'s own index and branch untouched', () => {
+    expect(sh(repo, 'status', '--porcelain')).toBe('?? scratch.txt');
+    expect(sh(repo, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('source');
+  });
+
+  it('second release fast-forwards main', () => {
+    setVersion(repo, '0.1.1');
+    sh(repo, 'commit', '-q', '-am', 'bump');
+    expect(run(repo, '0.1.1', remote).status).toBe(0);
+    expect(git(remote, 'rev-parse', 'main^')).toBe(git(remote, 'rev-parse', 'v0.1.0^{commit}'));
+    expect(git(remote, 'rev-parse', 'v0.1.1^{commit}')).toBe(git(remote, 'rev-parse', 'main'));
+  });
+
+  it('refuses a version that is already published', () => {
+    const before = git(remote, 'rev-parse', 'main');
+    const r = run(repo, '0.1.1', remote);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('release-commit: v0.1.1 is already published');
+    expect(git(remote, 'rev-parse', 'main')).toBe(before);
+  });
+
+  it('refuses a version mismatch', () => {
+    const repo2 = makeRepo('0.2.0'), remote2 = makeRemote();
+    const r = run(repo2, '0.3.0', remote2);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('release-commit: version mismatch (tag 0.3.0, plugin.json 0.2.0, package.json 0.2.0)');
+    expect(git(remote2, 'for-each-ref')).toBe('');
+    rmSync(repo2, { recursive: true, force: true }); rmSync(remote2, { recursive: true, force: true });
+  });
+
+  it('refuses when the bundle is missing', () => {
+    const repo2 = makeRepo('0.2.0'), remote2 = makeRemote();
+    rmSync(join(repo2, 'plugin/dist/index.js'));
+    const r = run(repo2, '0.2.0', remote2);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('release-commit: bundle missing');
+    expect(git(remote2, 'for-each-ref')).toBe('');
+    rmSync(repo2, { recursive: true, force: true }); rmSync(remote2, { recursive: true, force: true });
+  });
+});
