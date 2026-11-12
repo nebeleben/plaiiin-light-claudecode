@@ -22,14 +22,12 @@ Skills: compose-effect, draw-image, scenes, fleet-ota, lamp-access. Commands:
 
 ## Requirements
 
-Node.js 20 or newer, and lamps on the same network (mDNS). The plugin runs `dist/index.js`, which is
-built from the source with `npm run build` in the `mcp/` directory — build it before a local
-install (see `../README.md`):
+macOS, Node.js 20 or newer, lamp firmware 2.8 or newer, and lamps on the same network (mDNS).
+Linux and Windows are untested and not released.
 
 ```sh
-cd mcp && npm ci && npm run build
-claude plugin marketplace add ./mcp
-claude plugin install plaiiin-lamps@plaiiin
+claude plugin marketplace add nebeleben/plaiiin-light-claudecode
+claude plugin install plaiiin-lamps@plaiiin-lamps
 ```
 
 Everything stays on your network: the server talks only to your lamps and, for firmware updates, to
