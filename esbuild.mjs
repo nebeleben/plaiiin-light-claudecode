@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { build } from 'esbuild';
+import { writeNotices } from './scripts/notices.mjs';
 
 /** `import text from './file?raw'` → the file's text (the same suffix Vite/vitest understand). */
 const raw = {
@@ -15,7 +16,8 @@ const raw = {
   },
 };
 
-await build({
+const server = await build({
+  metafile: true,
   entryPoints: ['src/index.ts'],
   outfile: 'plugin/dist/index.js',
   bundle: true,
@@ -29,7 +31,8 @@ await build({
 });
 
 // The preview worker runs as its own process (src/preview/shade.ts finds it next to index.js).
-await build({
+const worker = await build({
+  metafile: true,
   entryPoints: ['src/preview/preview-worker.mjs'],
   outfile: 'plugin/dist/preview-worker.mjs',
   bundle: true,
@@ -38,3 +41,6 @@ await build({
   target: 'node20',
   legalComments: 'none',
 });
+
+// legalComments are stripped above; the bundled packages' licence notices ship in this file instead.
+await writeNotices([server.metafile, worker.metafile], 'plugin/THIRD-PARTY-NOTICES.txt');

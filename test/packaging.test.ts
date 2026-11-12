@@ -108,6 +108,21 @@ async function listTools() {
 const toolNames = async () => (await listTools()).map((t) => t.name);
 
 describe('built plugin server', () => {
+  it('ships third-party notices for every bundled package', () => {
+    const text = readFileSync(join(plugin, 'THIRD-PARTY-NOTICES.txt'), 'utf8');
+    for (const dep of ['@modelcontextprotocol/sdk', 'bonjour-service', 'jpeg-js', 'jsqr', 'omggif', 'pngjs', 'ws', 'zod'])
+      expect(text, dep).toContain(`\n${dep}@`);
+    expect(text).not.toContain(root);            // no machine paths
+  });
+
+  it('build is deterministic', () => {
+    const files = ['dist/index.js', 'dist/preview-worker.mjs', 'THIRD-PARTY-NOTICES.txt'];
+    const read = () => files.map((f) => readFileSync(join(plugin, f)));
+    const first = read();
+    execFileSync(process.execPath, ['esbuild.mjs'], { cwd: root, stdio: 'ignore' });
+    read().forEach((b, i) => expect(b.equals(first[i]!), files[i]).toBe(true));
+  }, 60_000);
+
   it('bundles the server and the preview worker', () => {
     expect(existsSync(join(plugin, 'dist/index.js'))).toBe(true);
     expect(existsSync(join(plugin, 'dist/preview-worker.mjs'))).toBe(true);
