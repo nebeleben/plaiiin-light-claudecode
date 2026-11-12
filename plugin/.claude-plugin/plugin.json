@@ -1,0 +1,8 @@
+{
+  "name": "plaiiin-lamps",
+  "version": "0.1.0",
+  "description": "Control, compose for and manage PlaiiinLight lamps on your local network.",
+  "author": { "name": "plaiiin" },
+  "license": "Apache-2.0",
+  "keywords": ["plaiiinlight", "lamps", "led", "mcp"]
+}
