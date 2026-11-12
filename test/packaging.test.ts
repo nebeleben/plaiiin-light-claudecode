@@ -115,6 +115,21 @@ describe('built plugin server', () => {
     expect(text).not.toContain(root);            // no machine paths
   });
 
+  it('every bundled package comes with its licence text', () => {
+    const text = readFileSync(join(plugin, 'THIRD-PARTY-NOTICES.txt'), 'utf8');
+    expect(text).not.toContain('ships no licence file');
+    // omggif has no LICENSE file: its MIT notice lives in the header of its main file
+    const omggif = text.slice(text.indexOf('\nomggif@'));
+    expect(omggif.slice(0, 1500)).toContain('Permission is hereby granted, free of charge');
+    expect(omggif.slice(0, 1500)).toContain('Dean McNamee');
+  });
+
+  it('the licence file names this project', () => {
+    const text = readFileSync(join(root, 'LICENSE'), 'utf8');
+    expect(text).toContain('Copyright 2026 plaiiin.com — plaiiin-lamps');
+    expect(text).not.toContain('node-red');
+  });
+
   it('build is deterministic', () => {
     const files = ['dist/index.js', 'dist/preview-worker.mjs', 'THIRD-PARTY-NOTICES.txt'];
     const read = () => files.map((f) => readFileSync(join(plugin, f)));

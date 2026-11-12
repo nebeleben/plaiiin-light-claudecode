@@ -9,7 +9,8 @@
 #            third-party notices. Here this workflow also rebuilds the bundle from the source in
 #            the same commit and fails if the result differs from what was published.
 #
-# Run it yourself any time from the Actions tab (workflow_dispatch) to repeat that comparison.
+# Anyone can repeat that comparison from a checkout of main:
+#   npm ci && npm run build && git diff --exit-code -- plugin
 name: ci
 
 on:

@@ -88,7 +88,7 @@ The plugin's server talks to exactly two things:
 
 There is no hosted service, no account and no telemetry. Your conversation with Claude itself goes
 to Anthropic as it always does; that includes what the tools report back, such as lamp names and
-states. Lamp keys are never part of that.
+states. Lamp keys are not part of that, unless you paste a share link into the chat yourself.
 
 ## Where things are stored
 
@@ -134,11 +134,20 @@ this repository is arranged to let you check it against the source instead:
   the bundle built from it, plus `plugin/THIRD-PARTY-NOTICES.txt` for the packages inside the
   bundle.
 - **`source`** has the full commit history of the code, without bundles.
-- The **`ci`** workflow rebuilds the bundle from the source in the same commit and fails if the
-  result is not byte-for-byte what was published. Every release must pass it, and you can run it
-  again yourself from the Actions tab.
+- The **`ci`** workflow runs on every release commit. It rebuilds the bundle from the source in
+  the same commit and fails if the result is not byte-for-byte what was published. Its results are
+  public in the Actions tab, and the GitHub Release for a version is only created when the same
+  comparison passes.
 
-To build it yourself: `npm ci && npm run build`. More in [CONTRIBUTING.md](CONTRIBUTING.md).
+You can repeat that comparison on your own machine from a checkout of `main`:
+
+```sh
+npm ci && npm run build && git diff --exit-code -- plugin
+```
+
+No output means the published bundle is exactly what this source builds.
+
+More on building and testing in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
