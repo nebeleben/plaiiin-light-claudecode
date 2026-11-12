@@ -1,0 +1,40 @@
+# Runs on the PUBLIC repo (nebeleben/plaiiin-light-claudecode). This file lives in public-repo/ in
+# the private mono-repo and is mirrored to .github/workflows/.
+#
+# Two branches, two jobs for this workflow:
+#   source — the plugin's full commit history, mirrored as it is written. No built bundle.
+#            Here this workflow only builds and tests.
+#   main   — the default branch, the one a marketplace install reads: one commit per release,
+#            holding that release's source AND the bundle built from it (plugin/dist/) plus the
+#            third-party notices. Here this workflow also rebuilds the bundle from the source in
+#            the same commit and fails if the result differs from what was published.
+#
+# Run it yourself any time from the Actions tab (workflow_dispatch) to repeat that comparison.
+name: ci
+
+on:
+  push:
+    branches: [main, source]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Published bundle matches the source
+        if: github.ref_name == 'main'
+        run: |
+          git diff --exit-code -- plugin/dist plugin/THIRD-PARTY-NOTICES.txt \
+            || { echo "::error::the committed bundle differs from a fresh build of this source"; exit 1; }
