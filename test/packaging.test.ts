@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -141,6 +141,17 @@ describe('built plugin server', () => {
     execFileSync(process.execPath, ['esbuild.mjs'], { cwd: root, stdio: 'ignore' });
     read().forEach((b, i) => expect(b.equals(first[i]!), files[i]).toBe(true));
   }, 60_000);
+
+  it('refuses to start under a malformed profile', () => {
+    const r = spawnSync(process.execPath, [join(plugin, 'dist/index.js')], {
+      env: { ...process.env, PLAIIIN_LAMPS_PROFILE: '../elsewhere', PLAIIIN_LAMPS_DIR: mkdtempSync(join(tmpdir(), 'pl-')) },
+      input: '', encoding: 'utf8', timeout: 20_000,
+    });
+    expect(r.status).toBe(1);
+    expect(r.stderr.trim().split('\n')).toHaveLength(1);
+    expect(r.stderr).toMatch(/^plaiiin-lamps: PLAIIIN_LAMPS_PROFILE must be/);
+    expect(r.stdout).toBe('');
+  });
 
   it('bundles the server and the preview worker', () => {
     expect(existsSync(join(plugin, 'dist/index.js'))).toBe(true);

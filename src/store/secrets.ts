@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DEFAULT_KEYCHAIN_SERVICE } from '../profile';
 
 /** Share keys / tokens per deviceId. Values never appear in errors. */
 export interface Secrets {
@@ -12,7 +13,6 @@ export interface Secrets {
 /** Run `cmd` with an argument array (no shell); `input` is written to its stdin. */
 export type Runner = (cmd: string, args: string[], input?: string) => Promise<{ code: number; stdout: string; stderr: string }>;
 
-const SERVICE = 'plaiiin-lamp-mcp';
 const SECURITY = '/usr/bin/security';
 const NOT_FOUND = 44; // errSecItemNotFound exit status of `security`
 
@@ -26,14 +26,14 @@ function quote(v: string, what: string): string {
  * The `security -i` stdin line that stores a secret. The secret goes on stdin, never in argv, where
  * any local user could read it (`ps`). The error for a bad value never contains the value.
  */
-export function keychainSetCommand(id: string, secret: string): string {
-  return `add-generic-password -U -s ${quote(SERVICE, 'service')} -a ${quote(id, 'account')} -w ${quote(secret, 'secret')}\n`;
+export function keychainSetCommand(id: string, secret: string, service: string = DEFAULT_KEYCHAIN_SERVICE): string {
+  return `add-generic-password -U -s ${quote(service, 'service')} -a ${quote(id, 'account')} -w ${quote(secret, 'secret')}\n`;
 }
 
 /** get/delete carry no secret, so they stay plain argument arrays. */
 export const keychainArgs = {
-  get: (id: string) => ['find-generic-password', '-s', SERVICE, '-a', id, '-w'],
-  delete: (id: string) => ['delete-generic-password', '-s', SERVICE, '-a', id],
+  get: (id: string, service: string = DEFAULT_KEYCHAIN_SERVICE) => ['find-generic-password', '-s', service, '-a', id, '-w'],
+  delete: (id: string, service: string = DEFAULT_KEYCHAIN_SERVICE) => ['delete-generic-password', '-s', service, '-a', id],
 };
 
 /** Spawn with an argument array (no shell), collect output. */
@@ -48,22 +48,22 @@ const spawnRunner: Runner = (cmd, args, input) => new Promise((resolve, reject) 
 });
 
 class KeychainSecrets implements Secrets {
-  constructor(private readonly run: Runner) {}
+  constructor(private readonly run: Runner, private readonly service: string) {}
 
   async get(deviceId: string): Promise<string | undefined> {
-    const r = await this.run(SECURITY, keychainArgs.get(deviceId));
+    const r = await this.run(SECURITY, keychainArgs.get(deviceId, this.service));
     if (r.code === NOT_FOUND) return undefined;
     if (r.code !== 0) throw fail('find-generic-password', r.code);
     return r.stdout.replace(/\r?\n$/, '');
   }
 
   async set(deviceId: string, secret: string): Promise<void> {
-    const r = await this.run(SECURITY, ['-i'], keychainSetCommand(deviceId, secret));
+    const r = await this.run(SECURITY, ['-i'], keychainSetCommand(deviceId, secret, this.service));
     if (r.code !== 0) throw fail('add-generic-password', r.code);
   }
 
   async delete(deviceId: string): Promise<void> {
-    const r = await this.run(SECURITY, keychainArgs.delete(deviceId));
+    const r = await this.run(SECURITY, keychainArgs.delete(deviceId, this.service));
     if (r.code !== 0 && r.code !== NOT_FOUND) throw fail('delete-generic-password', r.code);
   }
 }
@@ -122,7 +122,10 @@ class FileSecrets implements Secrets {
   }
 }
 
-/** darwin → macOS Keychain via `security` (service plaiiin-lamp-mcp, account = deviceId); else a 0600 file. */
-export function makeSecrets(dir: string, platform: NodeJS.Platform = process.platform, run: Runner = spawnRunner): Secrets {
-  return platform === 'darwin' ? new KeychainSecrets(run) : new FileSecrets(dir);
+/**
+ * darwin → macOS Keychain via `security` (one entry per lamp: service = the profile's, account =
+ * deviceId); else a 0600 file in `dir`, which is per profile already.
+ */
+export function makeSecrets(dir: string, platform: NodeJS.Platform = process.platform, run: Runner = spawnRunner, service: string = DEFAULT_KEYCHAIN_SERVICE): Secrets {
+  return platform === 'darwin' ? new KeychainSecrets(run, service) : new FileSecrets(dir);
 }

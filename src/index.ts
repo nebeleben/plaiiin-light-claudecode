@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Registry } from './lamp/registry';
+import { resolveProfile } from './profile';
 import { FleetStore } from './store/fleet';
 import { makeSecrets } from './store/secrets';
 import { buildServer } from './server';
@@ -12,8 +12,16 @@ import { consoleToStderr } from './util/stdout';
 // stdout is the JSON-RPC channel: library console output must not corrupt it.
 consoleToStderr();
 
-const stateDir = process.env.PLAIIIN_LAMPS_DIR ?? join(homedir(), '.plaiiin', 'lamps');
-const registry = new Registry(new FleetStore(stateDir), makeSecrets(stateDir));
+// Each assistant's plugin runs under its own profile: own lamp list, own keys (see profile.ts).
+let profile: ReturnType<typeof resolveProfile>;
+try {
+  profile = resolveProfile(process.env, homedir());
+} catch (e) {
+  process.stderr.write(`plaiiin-lamps: ${errorText(e)}\n`);
+  process.exit(1);
+}
+const { stateDir } = profile;
+const registry = new Registry(new FleetStore(stateDir), makeSecrets(stateDir, process.platform, undefined, profile.keychainService));
 const ctx: ToolContext = { registry, confirm: new Confirmations(), stateDir };
 
 const server = buildServer(ctx);
