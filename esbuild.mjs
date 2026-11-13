@@ -1,7 +1,9 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { build } from 'esbuild';
 import { writeNotices } from './scripts/notices.mjs';
+import { mirrorDir, replaceFile } from './scripts/mirror-dir.mjs';
+import { presentTargets } from './scripts/targets.mjs';
 
 /** `import text from './file?raw'` → the file's text (the same suffix Vite/vitest understand). */
 const raw = {
@@ -16,10 +18,17 @@ const raw = {
   },
 };
 
+// Every packaging folder in this tree gets the same three things: the bundle (dist/), the
+// third-party notices and a copy of the shared skills. They are built once, into the first target,
+// and copied to the others, so the targets cannot drift apart.
+const targets = presentTargets(process.cwd());
+if (!targets.length) throw new Error('build: no packaging folder (plugin/, plugin-chatgpt/) found in this tree');
+const [first, ...others] = targets;
+
 const server = await build({
   metafile: true,
   entryPoints: ['src/index.ts'],
-  outfile: 'plugin/dist/index.js',
+  outfile: `${first.dir}/dist/index.js`,
   bundle: true,
   platform: 'node',
   format: 'esm',
@@ -34,7 +43,7 @@ const server = await build({
 const worker = await build({
   metafile: true,
   entryPoints: ['src/preview/preview-worker.mjs'],
-  outfile: 'plugin/dist/preview-worker.mjs',
+  outfile: `${first.dir}/dist/preview-worker.mjs`,
   bundle: true,
   platform: 'node',
   format: 'esm',
@@ -42,5 +51,17 @@ const worker = await build({
   legalComments: 'none',
 });
 
+// Installed, dist/ has no package.json above it, and Node before 20.19 / 22.7 would then read
+// index.js as CommonJS. This one says what it is. (Written like every other output: complete or not at all.)
+await writeFile(`${first.dir}/dist/package.json.tmp-${process.pid}`, '{"type":"module"}\n');
+await rename(`${first.dir}/dist/package.json.tmp-${process.pid}`, `${first.dir}/dist/package.json`);
+
 // legalComments are stripped above; the bundled packages' licence notices ship in this file instead.
-await writeNotices([server.metafile, worker.metafile], 'plugin/THIRD-PARTY-NOTICES.txt');
+await writeNotices([server.metafile, worker.metafile], `${first.dir}/THIRD-PARTY-NOTICES.txt`);
+
+for (const t of others) {
+  await mirrorDir(`${first.dir}/dist`, `${t.dir}/dist`);
+  await replaceFile(`${first.dir}/THIRD-PARTY-NOTICES.txt`, `${t.dir}/THIRD-PARTY-NOTICES.txt`);
+}
+// The skills have one source (skills/); each target ships a copy.
+for (const t of targets) await mirrorDir('skills', `${t.dir}/skills`);

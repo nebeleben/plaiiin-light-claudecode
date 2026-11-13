@@ -39,7 +39,7 @@ jobs:
         run: |
           # A build from nothing: remove the committed outputs first, so a file the build no
           # longer writes shows up as deleted.
-          rm -rf plugin/dist plugin/THIRD-PARTY-NOTICES.txt
+          rm -rf plugin/dist plugin/skills plugin/THIRD-PARTY-NOTICES.txt
           npm run build
           git diff --exit-code -- plugin \
             || { echo "::error::the committed bundle differs from a fresh build of this source"; exit 1; }

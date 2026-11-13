@@ -29070,7 +29070,6 @@ var require_omggif = __commonJS({
 
 // src/index.ts
 import { homedir } from "node:os";
-import { join as join8 } from "node:path";
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 import process2 from "node:process";
@@ -50937,9 +50936,25 @@ var Registry = class {
   }
 };
 
+// src/profile.ts
+import { join } from "node:path";
+var DEFAULT_KEYCHAIN_SERVICE = "plaiiin-lamp-mcp";
+var PROFILE = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
+function resolveProfile(env, home) {
+  const profile2 = env.PLAIIIN_LAMPS_PROFILE;
+  if (profile2 !== void 0 && !PROFILE.test(profile2)) {
+    throw new Error("PLAIIIN_LAMPS_PROFILE must be 1\u201332 lowercase letters, digits or hyphens (not starting or ending with a hyphen)");
+  }
+  const suffix = profile2 === void 0 ? "" : `-${profile2}`;
+  return {
+    stateDir: env.PLAIIIN_LAMPS_DIR ?? join(home, ".plaiiin", `lamps${suffix}`),
+    keychainService: `${DEFAULT_KEYCHAIN_SERVICE}${suffix}`
+  };
+}
+
 // src/store/fleet.ts
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join as join2 } from "node:path";
 var FIELDS = [
   "deviceId",
   "name",
@@ -50965,7 +50980,7 @@ function clean(l) {
 var FleetStore = class {
   constructor(dir) {
     this.dir = dir;
-    this.file = join(dir, "fleet.json");
+    this.file = join2(dir, "fleet.json");
     this.lamps = this.load();
   }
   dir;
@@ -51039,7 +51054,7 @@ var FleetStore = class {
   }
   save() {
     if (this.locked) {
-      throw new Error(`${this.locked}; not overwriting it \u2014 fix the file (or move it away) and restart Claude Code`);
+      throw new Error(`${this.locked}; not overwriting it \u2014 fix the file (or move it away) and restart the assistant`);
     }
     mkdirSync(this.dir, { recursive: true });
     const tmp = `${this.file}.${process.pid}.tmp`;
@@ -51051,21 +51066,20 @@ var FleetStore = class {
 // src/store/secrets.ts
 import { spawn } from "node:child_process";
 import { chmodSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join2 } from "node:path";
-var SERVICE = "plaiiin-lamp-mcp";
+import { join as join3 } from "node:path";
 var SECURITY = "/usr/bin/security";
 var NOT_FOUND = 44;
 function quote(v, what) {
   if (/[\x00-\x1f\x7f]/.test(v)) throw new Error(`keychain: the ${what} contains a control character`);
   return `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
-function keychainSetCommand(id, secret) {
-  return `add-generic-password -U -s ${quote(SERVICE, "service")} -a ${quote(id, "account")} -w ${quote(secret, "secret")}
+function keychainSetCommand(id, secret, service = DEFAULT_KEYCHAIN_SERVICE) {
+  return `add-generic-password -U -s ${quote(service, "service")} -a ${quote(id, "account")} -w ${quote(secret, "secret")}
 `;
 }
 var keychainArgs = {
-  get: (id) => ["find-generic-password", "-s", SERVICE, "-a", id, "-w"],
-  delete: (id) => ["delete-generic-password", "-s", SERVICE, "-a", id]
+  get: (id, service = DEFAULT_KEYCHAIN_SERVICE) => ["find-generic-password", "-s", service, "-a", id, "-w"],
+  delete: (id, service = DEFAULT_KEYCHAIN_SERVICE) => ["delete-generic-password", "-s", service, "-a", id]
 };
 var spawnRunner = (cmd, args, input2) => new Promise((resolve, reject) => {
   const p = spawn(cmd, args, { stdio: [input2 === void 0 ? "ignore" : "pipe", "pipe", "pipe"] });
@@ -51085,22 +51099,24 @@ var spawnRunner = (cmd, args, input2) => new Promise((resolve, reject) => {
   p.on("close", (code) => resolve({ code: code ?? -1, stdout, stderr }));
 });
 var KeychainSecrets = class {
-  constructor(run) {
+  constructor(run, service) {
     this.run = run;
+    this.service = service;
   }
   run;
+  service;
   async get(deviceId) {
-    const r = await this.run(SECURITY, keychainArgs.get(deviceId));
+    const r = await this.run(SECURITY, keychainArgs.get(deviceId, this.service));
     if (r.code === NOT_FOUND) return void 0;
     if (r.code !== 0) throw fail("find-generic-password", r.code);
     return r.stdout.replace(/\r?\n$/, "");
   }
   async set(deviceId, secret) {
-    const r = await this.run(SECURITY, ["-i"], keychainSetCommand(deviceId, secret));
+    const r = await this.run(SECURITY, ["-i"], keychainSetCommand(deviceId, secret, this.service));
     if (r.code !== 0) throw fail("add-generic-password", r.code);
   }
   async delete(deviceId) {
-    const r = await this.run(SECURITY, keychainArgs.delete(deviceId));
+    const r = await this.run(SECURITY, keychainArgs.delete(deviceId, this.service));
     if (r.code !== 0 && r.code !== NOT_FOUND) throw fail("delete-generic-password", r.code);
   }
 };
@@ -51110,7 +51126,7 @@ function fail(sub, code) {
 var FileSecrets = class {
   constructor(dir) {
     this.dir = dir;
-    this.file = join2(dir, "secrets.json");
+    this.file = join3(dir, "secrets.json");
   }
   dir;
   file;
@@ -51152,8 +51168,8 @@ var FileSecrets = class {
     renameSync2(tmp, this.file);
   }
 };
-function makeSecrets(dir, platform = process.platform, run = spawnRunner) {
-  return platform === "darwin" ? new KeychainSecrets(run) : new FileSecrets(dir);
+function makeSecrets(dir, platform = process.platform, run = spawnRunner, service = DEFAULT_KEYCHAIN_SERVICE) {
+  return platform === "darwin" ? new KeychainSecrets(run, service) : new FileSecrets(dir);
 }
 
 // node_modules/zod/v3/helpers/util.js
@@ -59456,7 +59472,7 @@ function registerControlTools(server2, ctx2) {
 }
 
 // src/tools/effects.ts
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 
 // src/lamp/scripts.ts
 var enc = (n) => encodeURIComponent(n);
@@ -59630,7 +59646,7 @@ async function renderFrames(source2, opts) {
 
 // src/store/library.ts
 import { existsSync, mkdirSync as mkdirSync3, readdirSync, readFileSync as readFileSync3, renameSync as renameSync3, rmSync, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 var NAME = /^[A-Za-z0-9_-]{1,32}$/;
 var SUFFIX = { effects: ".js", images: ".json", scenes: ".json" };
 var SINGULAR = { effects: "effect", images: "image", scenes: "scene" };
@@ -59648,7 +59664,7 @@ var Library = class {
   }
   dir;
   list(kind) {
-    const d = join3(this.dir, kind);
+    const d = join4(this.dir, kind);
     if (!existsSync(d)) return [];
     const suffix = SUFFIX[kind];
     return readdirSync(d).filter((f) => f.endsWith(suffix) && !f.endsWith(".params.json")).map((f) => f.slice(0, -suffix.length)).filter((n) => NAME.test(n)).sort();
@@ -59684,9 +59700,9 @@ var Library = class {
     put(this.file("scenes", name, ".json", true), JSON.stringify(doc, null, 2));
   }
   file(kind, name, suffix, create = false) {
-    const d = join3(this.dir, kind);
+    const d = join4(this.dir, kind);
     if (create) mkdirSync3(d, { recursive: true });
-    return join3(d, name + suffix);
+    return join4(d, name + suffix);
   }
   read(kind, name, suffix) {
     checkName(name);
@@ -59820,7 +59836,7 @@ async function writeEffect(ctx2, tool, args, confirm, targets, name, src, tunes,
   return result({ results: targets.map((l) => done.get(l.deviceId)) });
 }
 function registerEffectsTools(server2, ctx2) {
-  const library = new Library(join4(ctx2.stateDir, "library"));
+  const library = new Library(join5(ctx2.stateDir, "library"));
   const ro2 = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
   server2.registerTool("effects_list", {
     title: "List effects",
@@ -60038,7 +60054,7 @@ function registerEffectsTools(server2, ctx2) {
   }));
   server2.registerTool("library_list", {
     title: "List the local library",
-    description: "List what is saved in the library on this computer (~/.plaiiin/lamps/library): effects, images or scenes. Read-only.",
+    description: "List what is saved in the local library of this plugin, on this computer: effects, images or scenes. Read-only.",
     inputSchema: { kind: external_exports.enum(["effects", "images", "scenes"]) },
     annotations: ro2
   }, async ({ kind }) => guard(async () => result({ kind, names: library.list(kind) })));
@@ -60444,7 +60460,7 @@ function registerFleetTools(server2, ctx2) {
 }
 
 // src/tools/images.ts
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 
 // src/sync/copy.ts
 var enc3 = (n) => encodeURIComponent(n);
@@ -60536,7 +60552,7 @@ async function fetchImage(c, id) {
   return { ...img, ...entry.label ? { label: entry.label } : {} };
 }
 function registerImagesTools(server2, ctx2) {
-  const library = new Library(join5(ctx2.stateDir, "library"));
+  const library = new Library(join6(ctx2.stateDir, "library"));
   const ro2 = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
   server2.registerTool("images_list", {
     title: "List saved images",
@@ -60754,7 +60770,7 @@ function registerImagesTools(server2, ctx2) {
 import { createHash as createHash2 } from "node:crypto";
 import { mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync4 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 
 // src/ota/releases.ts
 var REPO = "nebeleben/plaiiin-light";
@@ -60947,7 +60963,7 @@ function registerOtaTools(server2, ctx2) {
     const content = { version: rel.version, sums: rel.assets[SUMS], plan: updates.map((u) => ({ deviceId: u.lamp.deviceId, from: u.current, asset: u.asset, url: u.url })) };
     const ask = confirmContent(ctx2, "firmware_update", args, args.confirm, content, updates.map((u) => u.lamp.deviceId), summary);
     if (ask) return result(ask);
-    const dir = mkdtempSync(join6(tmpdir(), "plaiiin-ota-"));
+    const dir = mkdtempSync(join7(tmpdir(), "plaiiin-ota-"));
     const images = /* @__PURE__ */ new Map();
     let sums;
     const image = async (name, url2) => {
@@ -60958,7 +60974,7 @@ function registerOtaTools(server2, ctx2) {
         const want = sums[name];
         if (!want) throw new Error(`${SUMS} has no entry for ${name} \u2014 not flashing it`);
         if (createHash2("sha256").update(data).digest("hex") !== want) throw new Error(`${name} doesn't match its SHA-256 in ${SUMS} \u2014 not flashing it`);
-        writeFileSync4(join6(dir, name), data);
+        writeFileSync4(join7(dir, name), data);
         images.set(name, data);
       }
       return data;
@@ -61021,7 +61037,7 @@ function registerOtaTools(server2, ctx2) {
 }
 
 // src/tools/scenes.ts
-import { join as join7 } from "node:path";
+import { join as join8 } from "node:path";
 var READ5 = { minRole: "user" };
 var SCENES = { perm: "scenes", minRole: "creator" };
 var CONTROL3 = { perm: "control", minRole: "user" };
@@ -61131,7 +61147,7 @@ async function writeBundle(ctx2, tool, args, targets, name, b, from) {
   }) });
 }
 function registerScenesTools(server2, ctx2) {
-  const library = new Library(join7(ctx2.stateDir, "library"));
+  const library = new Library(join8(ctx2.stateDir, "library"));
   server2.registerTool("scenes_list", {
     title: "List scenes",
     description: "List the scenes saved on a lamp (name and document; up to 32) and which one is active (`active`, null when the lamp no longer shows it). Read-only.",
@@ -61802,7 +61818,7 @@ function registerStreamTools(server2, ctx2) {
 
 // src/server.ts
 var SERVER_NAME = "plaiiin-lamps";
-var SERVER_VERSION = "0.1.1";
+var SERVER_VERSION = "0.2.0";
 var INSTRUCTIONS = 'Controls PlaiiinLight lamps on the local network. Start with lamps_list (or lamps_discover to find lamps). Tools that target lamps take `lamps` as names, deviceIds or "all" and report one result per lamp. Access is per lamp: an AI access key only allows the permissions the owner granted \u2014 a refusal names the missing permission; never try to work around it. Destructive tools first return {needsConfirmation, summary, confirm}: show the summary to the user and call again with confirm only after they agree.';
 function buildServer(ctx2) {
   const server2 = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { instructions: INSTRUCTIONS });
@@ -61825,8 +61841,16 @@ function consoleToStderr(stream = process.stderr) {
 
 // src/index.ts
 consoleToStderr();
-var stateDir = process.env.PLAIIIN_LAMPS_DIR ?? join8(homedir(), ".plaiiin", "lamps");
-var registry2 = new Registry(new FleetStore(stateDir), makeSecrets(stateDir));
+var profile;
+try {
+  profile = resolveProfile(process.env, homedir());
+} catch (e) {
+  process.stderr.write(`plaiiin-lamps: ${errorText(e)}
+`);
+  process.exit(1);
+}
+var { stateDir } = profile;
+var registry2 = new Registry(new FleetStore(stateDir), makeSecrets(stateDir, process.platform, void 0, profile.keychainService));
 var ctx = { registry: registry2, confirm: new Confirmations(), stateDir };
 var server = buildServer(ctx);
 await server.connect(new StdioServerTransport());

@@ -1,13 +1,16 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const root = resolve(__dirname, '..');
-const plugin = join(root, 'plugin');
+// Each public repo carries one packaging folder. The checks that are about the server, the build
+// and the skills run against whichever is here; the Claude Code specifics are skipped without it.
+const hasClaude = existsSync(join(root, 'plugin/.claude-plugin/plugin.json'));
+const plugin = join(root, hasClaude ? 'plugin' : 'plugin-chatgpt');
 // Build once for the whole file: the tool checks below run against the bundle Claude Code would start.
 beforeAll(() => { execFileSync(process.execPath, ['esbuild.mjs'], { cwd: root, stdio: 'ignore' }); }, 60_000);
 
@@ -26,15 +29,20 @@ function frontmatter(path: string): Record<string, string> {
 }
 
 describe('plugin packaging', () => {
-  it('plugin.json and marketplace.json agree on the plugin name', () => {
+  it('one version everywhere', () => {
+    // The release refuses to publish unless the tag agrees with package.json and the target's manifest.
+    const pkg = json(join(root, 'package.json'));
+    expect(readFileSync(join(root, 'src/server.ts'), 'utf8')).toContain(`export const SERVER_VERSION = '${pkg.version}';`);
+    expect(json(join(root, 'package-lock.json')).version).toBe(pkg.version);
+    const manifests = ['plugin/.claude-plugin/plugin.json', 'plugin-chatgpt/.codex-plugin/plugin.json'].filter((m) => existsSync(join(root, m)));
+    expect(manifests.length).toBeGreaterThan(0);
+    for (const m of manifests) expect(json(join(root, m)).version, m).toBe(pkg.version);
+  });
+
+  it.skipIf(!hasClaude)('plugin.json and marketplace.json agree on the plugin name', () => {
     const manifest = json(join(plugin, '.claude-plugin/plugin.json'));
     const market = json(join(root, '.claude-plugin/marketplace.json'));
     expect(manifest.name).toBe('plaiiin-lamps');
-    // One version, three places: the release refuses to publish unless they agree with the tag.
-    const pkg = json(join(root, 'package.json'));
-    expect(manifest.version).toBe(pkg.version);
-    expect(readFileSync(join(root, 'src/server.ts'), 'utf8')).toContain(`export const SERVER_VERSION = '${pkg.version}';`);
-    expect(json(join(root, 'package-lock.json')).version).toBe(pkg.version);
     expect(manifest.author).toEqual({ name: 'plaiiin' });
     expect(market.name).toBe('plaiiin-lamps');
     expect(market.owner).toEqual({ name: 'plaiiin' });
@@ -46,7 +54,7 @@ describe('plugin packaging', () => {
     expect(market.plugins[0].version).toBeUndefined();   // plugin.json is the only version source
   });
 
-  it('.mcp.json starts the bundled server', () => {
+  it.skipIf(!hasClaude)('.mcp.json starts the bundled server', () => {
     const mcp = json(join(plugin, '.mcp.json'));
     expect(mcp.mcpServers.lamps).toEqual({ command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/dist/index.js'] });
   });
@@ -66,7 +74,18 @@ describe('plugin packaging', () => {
     }
   });
 
-  it('commands have descriptions; compose takes arguments', () => {
+  it('skills come from the shared source and are worded for any assistant', () => {
+    const names = readdirSync(join(root, 'skills'));
+    expect(readdirSync(join(plugin, 'skills')).sort()).toEqual([...names].sort());
+    for (const s of names) {
+      const src = readFileSync(join(root, 'skills', s, 'SKILL.md'), 'utf8');
+      expect(readFileSync(join(plugin, 'skills', s, 'SKILL.md'), 'utf8')).toBe(src);
+      // "Claude" may only appear inside a quotation of the app's own UI text
+      expect(src.replace(/"[^"\n]*"/g, '').replace(/“[^”\n]*”/g, ''), s).not.toMatch(/\bClaude\b/);
+    }
+  });
+
+  it.skipIf(!hasClaude)('commands have descriptions; compose takes arguments', () => {
     const lamps = frontmatter(join(plugin, 'commands/lamps.md'));
     const compose = frontmatter(join(plugin, 'commands/compose.md'));
     expect(lamps.description).toBeTruthy();
@@ -82,7 +101,7 @@ describe('plugin packaging', () => {
       const used = [...text.matchAll(/`((?:lamps?|effects?|image|images|scenes?|swarms|stream|streams|firmware|library)_[a-z_]+)`/g)].map((m) => m[1]!);
       for (const t of used) expect(names.has(t), `${s} mentions ${t}`).toBe(true);
     }
-    for (const c of ['lamps.md', 'compose.md']) {
+    for (const c of hasClaude ? ['lamps.md', 'compose.md'] : []) {
       const text = readFileSync(join(plugin, 'commands', c), 'utf8');
       const used = [...text.matchAll(/`((?:lamps?|effects?|swarms)_[a-z_]+)`/g)].map((m) => m[1]!);
       for (const t of used) expect(names.has(t), `${c} mentions ${t}`).toBe(true);
@@ -141,6 +160,30 @@ describe('built plugin server', () => {
     execFileSync(process.execPath, ['esbuild.mjs'], { cwd: root, stdio: 'ignore' });
     read().forEach((b, i) => expect(b.equals(first[i]!), files[i]).toBe(true));
   }, 60_000);
+
+  it('refuses to start under a malformed profile', () => {
+    const r = spawnSync(process.execPath, [join(plugin, 'dist/index.js')], {
+      env: { ...process.env, PLAIIIN_LAMPS_PROFILE: '../elsewhere', PLAIIIN_LAMPS_DIR: mkdtempSync(join(tmpdir(), 'pl-')) },
+      input: '', encoding: 'utf8', timeout: 20_000,
+    });
+    expect(r.status).toBe(1);
+    expect(r.stderr.trim().split('\n')).toHaveLength(1);
+    expect(r.stderr).toMatch(/^plaiiin-lamps: PLAIIIN_LAMPS_PROFILE must be/);
+    expect(r.stdout).toBe('');
+  });
+
+  it('the installed bundle starts as an ES module on every supported Node', () => {
+    // Installed, dist/ has no package.json above it. Node before 20.19 / 22.7 then reads index.js as
+    // CommonJS and dies on its first import; --no-experimental-detect-module reproduces that here.
+    expect(JSON.parse(readFileSync(join(plugin, 'dist/package.json'), 'utf8'))).toEqual({ type: 'module' });
+    const alone = mkdtempSync(join(tmpdir(), 'installed-'));
+    cpSync(join(plugin, 'dist'), join(alone, 'dist'), { recursive: true });
+    const r = spawnSync(process.execPath, ['--no-experimental-detect-module', join(alone, 'dist/index.js')], {
+      env: { ...process.env, PLAIIIN_LAMPS_PROFILE: '../elsewhere' }, input: '', encoding: 'utf8', timeout: 20_000,
+    });
+    expect(r.stderr).toMatch(/^plaiiin-lamps: PLAIIIN_LAMPS_PROFILE must be/);   // it ran; it did not fail to parse
+    expect(r.status).toBe(1);
+  });
 
   it('bundles the server and the preview worker', () => {
     expect(existsSync(join(plugin, 'dist/index.js'))).toBe(true);
