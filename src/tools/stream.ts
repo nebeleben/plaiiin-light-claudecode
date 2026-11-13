@@ -10,7 +10,7 @@ import { errorText, explain, failure, guard, lampsArg, normLamps, result, type T
 import { gridOf } from './images';
 import { lanLookup } from '../lamp/lookup';
 
-/** `/ws` (lampos/docs/sharing-api.md): any share key with user access; AI keys need `stream`. */
+/** `/ws` (firmware docs/sharing-api.md): any share key with user access; AI keys need `stream`. */
 const STREAM: Need = { perm: 'stream', minRole: 'user' };
 /** A lamp refuses a stream by completing the upgrade and closing at once (no HTTP 403 on /ws). */
 const REFUSE_GRACE_MS = 250;

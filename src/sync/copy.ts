@@ -1,11 +1,11 @@
 /**
- * Copying scripts, images and scenes to a lamp — the same semantics as the apps' swarm sync
- * (mac/Sources/LamposClient/SwarmSync.swift). Used by the image, scene and effect copy tools.
+ * Copying scripts, images and scenes to a lamp — the same semantics as the swarm sync in the
+ * PlaiiinLight apps. Used by the image, scene and effect copy tools.
  */
 import type { LampClient } from '../lamp/client';
 import { listing, present, putSource, putTunes } from '../lamp/scripts';
 
-/** A saved lamp state (lampos/docs/protocol.md "Scenes"); every field optional. */
+/** A saved lamp state (firmware docs/protocol.md "Scenes"); every field optional. */
 export interface SceneDoc {
   on?: boolean; mode?: string; script?: string; params?: Record<string, number>;
   image?: string; color?: number[]; brightness?: number;

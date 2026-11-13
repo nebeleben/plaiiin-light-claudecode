@@ -1,6 +1,6 @@
 /**
  * In-memory fake PlaiiinLight lamp for tests. Real HTTP server on 127.0.0.1 (random port) plus /ws.
- * Enforces the role ladder and the AI-key permission table from lampos/docs/sharing-api.md and
+ * Enforces the role ladder and the AI-key permission table from the firmware's docs/sharing-api.md and
  * answers with firmware-style errors (plain text for 400/403, JSON for frame/image errors).
  * Extend by adding a ROUTES entry or by using the `state` hooks (`delayMs`, `echoAuthOn500`, `override`).
  */

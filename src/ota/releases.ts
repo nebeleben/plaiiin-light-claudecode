@@ -1,6 +1,6 @@
 /**
- * Firmware releases on the public firmware repo, chosen exactly as the Mac app does
- * (mac/Sources/AppCore/Update/FirmwareUpdateChecker.swift + UpdateChecker.isNewer).
+ * Firmware releases on the public firmware repo, chosen exactly as the PlaiiinLight Mac app
+ * chooses them (same asset naming, same "is newer" comparison).
  */
 const REPO = 'nebeleben/plaiiin-light';
 export const RELEASES_URL = `https://api.github.com/repos/${REPO}/releases?per_page=100`;

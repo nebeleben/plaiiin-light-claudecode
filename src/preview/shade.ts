@@ -1,6 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-// Byte-identical copy of lampos/portal/shade-runtime.js (scripts/check-vendor.mjs), bundled as text
+// Byte-identical copy of the firmware's portal/shade-runtime.js (scripts/check-vendor.mjs), bundled as text
 // and handed to the worker over stdin.
 import RUNTIME from '../../vendor/shade-runtime.js?raw';
 
