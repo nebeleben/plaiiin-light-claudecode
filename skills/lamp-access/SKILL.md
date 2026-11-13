@@ -1,6 +1,6 @@
 ---
 name: lamp-access
-description: Use when a PlaiiinLight lamp tool is refused ("not permitted by this lamp's AI key", "needs <perm>", key revoked), when a lamp is paired and must be added, or when the user asks how to give Claude access to a lamp or what an AI access key allows.
+description: Use when a PlaiiinLight lamp tool is refused ("not permitted by this lamp's AI key", "needs <perm>", key revoked), when a lamp is paired and must be added, or when the user asks how to give the assistant access to a lamp or what an AI access key allows.
 ---
 
 # Access to PlaiiinLight lamps
@@ -9,7 +9,7 @@ Each lamp in the fleet has one access level on this computer (`lamps_list` shows
 keys `perms`, `maxBrightness`, `onlyWhenOn`):
 
 - **admin** — an unpaired lamp (no owner yet): everything. `lamps_discover` adds these by itself.
-- **ai** — an AI access key the owner made for Claude: exactly the permissions they granted.
+- **ai** — an AI access key the owner made for an AI assistant: exactly the permissions they granted.
 - **creator / user** — an ordinary share key (see "Older firmware").
 
 ## Adding a paired lamp: an AI access key
@@ -45,7 +45,7 @@ never repeat, print or log a key or share link**, and never write one into a fil
 | `images` | draw, save, show, label, delete images |
 | `scenes` | create, capture, overwrite, delete scenes (activating is `control`) |
 | `stream` | live streaming — a stream can also switch the lamp on and off |
-| `ota` | firmware updates — **effectively full control**: new firmware can read every secret on the lamp. Suggest it only when the user wants Claude to update firmware. |
+| `ota` | firmware updates — **effectively full control**: new firmware can read every secret on the lamp. Suggest it only when the user wants the assistant to update firmware. |
 | `rename` | rename the lamp (it restarts) |
 | `swarm` | read which swarm the lamp is in (never join/leave) |
 

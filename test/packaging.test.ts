@@ -66,6 +66,17 @@ describe('plugin packaging', () => {
     }
   });
 
+  it('skills come from the shared source and are worded for any assistant', () => {
+    const names = readdirSync(join(root, 'skills'));
+    expect(readdirSync(join(plugin, 'skills')).sort()).toEqual([...names].sort());
+    for (const s of names) {
+      const src = readFileSync(join(root, 'skills', s, 'SKILL.md'), 'utf8');
+      expect(readFileSync(join(plugin, 'skills', s, 'SKILL.md'), 'utf8')).toBe(src);
+      // "Claude" may only appear inside a quotation of the app's own UI text
+      expect(src.replace(/"[^"\n]*"/g, '').replace(/“[^”\n]*”/g, ''), s).not.toMatch(/\bClaude\b/);
+    }
+  });
+
   it('commands have descriptions; compose takes arguments', () => {
     const lamps = frontmatter(join(plugin, 'commands/lamps.md'));
     const compose = frontmatter(join(plugin, 'commands/compose.md'));
