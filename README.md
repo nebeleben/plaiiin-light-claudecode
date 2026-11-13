@@ -65,6 +65,9 @@ does not pass through the chat. A saved screenshot of the QR code works too.
 The lamp itself enforces these permissions. You can change them, or revoke the key, in the app's
 Share tab at any time. An AI key cannot be used by the apps.
 
+**Keys are not shared between assistants.** If you also use the PlaiiinLight plugin for another
+assistant, a key you gave to Claude is not available there, and the other way round.
+
 ## What it does and what it talks to
 
 - **Lamps and access** — find lamps, list them with their state, add a shared lamp, forget one.
@@ -131,10 +134,10 @@ What Claude Code runs is a single bundled file, `plugin/dist/index.js`. Nobody r
 this repository is arranged to let you check it against the source instead:
 
 - **`main`** (this branch) has one commit per release. Each holds that release's source code *and*
-  the bundle built from it, plus `plugin/THIRD-PARTY-NOTICES.txt` for the packages inside the
-  bundle.
-- **`source`** has the full commit history of the code, without bundles.
-- The **`ci`** workflow runs on every release commit. It rebuilds the bundle from the source in
+  what was built from it: the bundle, the plugin's copy of the skills, and
+  `plugin/THIRD-PARTY-NOTICES.txt` for the packages inside the bundle.
+- **`source`** has the full commit history of the code, without built files.
+- The **`ci`** workflow runs on every release commit. It rebuilds everything from the source in
   the same commit and fails if the result is not byte-for-byte what was published. Its results are
   public in the Actions tab, and the GitHub Release for a version is only created when the same
   comparison passes.
@@ -145,7 +148,11 @@ You can repeat that comparison on your own machine from a checkout of `main`:
 npm ci && npm run build && git diff --exit-code -- plugin
 ```
 
-No output means the published bundle is exactly what this source builds.
+No output means the published plugin is exactly what this source builds.
+
+The same server is also published as a plugin for the ChatGPT app from its own repository,
+[plaiiin-light-chatgpt](https://github.com/nebeleben/plaiiin-light-chatgpt); the two share their
+version numbers, so a number may be skipped here when only the other one was released.
 
 More on building and testing in [CONTRIBUTING.md](CONTRIBUTING.md).
 
