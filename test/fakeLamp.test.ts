@@ -1,5 +1,5 @@
 /**
- * Pins the fake lamp's permission table and role ladder against lampos/docs/sharing-api.md,
+ * Pins the fake lamp's permission table and role ladder against the firmware's docs/sharing-api.md,
  * so later tasks can rely on the fake answering like the firmware does.
  */
 import { afterEach, describe, expect, it } from 'vitest';

@@ -15,7 +15,7 @@ export const MAX_DECODE_PIXELS = 256 * 1024 * 1024;
 /** GIF frames without a usable delay (0 or 1 cs) play at 100 ms, as browsers do. */
 const DEFAULT_GIF_DELAY_MS = 100;
 
-/** `[0x01, count_hi, count_lo, r, g, b, …]` — a colour frame on `/ws` (lampos/docs/protocol.md). */
+/** `[0x01, count_hi, count_lo, r, g, b, …]` — a colour frame on `/ws` (firmware docs/protocol.md). */
 export function encodeColorFrame(rgb: Uint8Array): Buffer {
   if (rgb.length % 3 !== 0) throw new Error('a colour frame needs 3 bytes per LED');
   const count = rgb.length / 3;

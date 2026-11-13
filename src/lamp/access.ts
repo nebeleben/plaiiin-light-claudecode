@@ -1,6 +1,6 @@
 import type { FleetLamp } from '../store/fleet';
 
-/** AI-key permissions (lampos/docs/sharing-api.md). */
+/** AI-key permissions (firmware repo nebeleben/plaiiin-light, docs/sharing-api.md). */
 export type Perm = 'control' | 'effects' | 'images' | 'scenes' | 'stream' | 'ota' | 'rename' | 'swarm';
 export type MinRole = 'user' | 'creator' | 'admin';
 

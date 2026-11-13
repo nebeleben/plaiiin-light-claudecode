@@ -68,9 +68,9 @@ changes brightness and restores it. It uploads, deletes, pairs, renames and upda
 
 Releases are cut in the private mono-repo:
 
-1. Set the new version in `plugin/.claude-plugin/plugin.json` and `package.json`, refresh
-   `package-lock.json` (`npm install --package-lock-only`), and update the version asserted in
-   `test/packaging.test.ts`. Commit.
+1. Set the new version in three places: `plugin/.claude-plugin/plugin.json`, `package.json`
+   (then `npm install --package-lock-only` to carry it into `package-lock.json`) and
+   `SERVER_VERSION` in `src/server.ts`. `npm test` fails while they disagree. Commit.
 2. Tag that commit `claudecode-vX.Y.Z` and push the tag.
 
 The mirror workflow then filters the history to this repository's `source` branch, runs the type
@@ -78,6 +78,6 @@ check and the tests, builds, and calls `scripts/release-commit.sh`, which pushes
 plus bundle plus notices) to `main` together with the tag `vX.Y.Z`. Here, `ci` and `release`
 rebuild the bundle and compare; `release` then creates the GitHub Release.
 
-The three version numbers and the tag must agree, or nothing is published. A published version is
+The tag must match the version in `plugin.json` and `package.json`, or nothing is published. A published version is
 never released again: fix forward with a new version. Users only receive a release when the
 version in `plugin.json` changes.

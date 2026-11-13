@@ -30,7 +30,11 @@ describe('plugin packaging', () => {
     const manifest = json(join(plugin, '.claude-plugin/plugin.json'));
     const market = json(join(root, '.claude-plugin/marketplace.json'));
     expect(manifest.name).toBe('plaiiin-lamps');
-    expect(manifest.version).toBe('0.1.0');
+    // One version, three places: the release refuses to publish unless they agree with the tag.
+    const pkg = json(join(root, 'package.json'));
+    expect(manifest.version).toBe(pkg.version);
+    expect(readFileSync(join(root, 'src/server.ts'), 'utf8')).toContain(`export const SERVER_VERSION = '${pkg.version}';`);
+    expect(json(join(root, 'package-lock.json')).version).toBe(pkg.version);
     expect(manifest.author).toEqual({ name: 'plaiiin' });
     expect(market.name).toBe('plaiiin-lamps');
     expect(market.owner).toEqual({ name: 'plaiiin' });
@@ -112,7 +116,7 @@ describe('built plugin server', () => {
     const text = readFileSync(join(plugin, 'THIRD-PARTY-NOTICES.txt'), 'utf8');
     for (const dep of ['@modelcontextprotocol/sdk', 'bonjour-service', 'jpeg-js', 'jsqr', 'omggif', 'pngjs', 'ws', 'zod'])
       expect(text, dep).toContain(`\n${dep}@`);
-    expect(text).not.toContain(root);            // no machine paths
+    expect(text).not.toMatch(/node_modules\/|\/Users\/|\/home\//);   // no build-machine paths
   });
 
   it('every bundled package comes with its licence text', () => {

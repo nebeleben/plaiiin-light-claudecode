@@ -37,5 +37,13 @@ jobs:
       - name: Published bundle matches the source
         if: github.ref_name == 'main'
         run: |
-          git diff --exit-code -- plugin/dist plugin/THIRD-PARTY-NOTICES.txt \
+          # A build from nothing: remove the committed outputs first, so a file the build no
+          # longer writes shows up as deleted.
+          rm -rf plugin/dist plugin/THIRD-PARTY-NOTICES.txt
+          npm run build
+          git diff --exit-code -- plugin \
             || { echo "::error::the committed bundle differs from a fresh build of this source"; exit 1; }
+          # ...and nothing the build writes may be missing from the commit (--ignored: the
+          # outputs are git-ignored on the source branch, so plain status would not list them).
+          EXTRA="$(git status --porcelain --ignored -- plugin)"
+          [ -z "$EXTRA" ] || { echo "::error::the build writes files that are not in the release: $EXTRA"; exit 1; }

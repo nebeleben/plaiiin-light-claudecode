@@ -10,7 +10,7 @@
 # push. `main` therefore only ever fast-forwards and never exists without a bundle.
 #
 # It refuses — pushing nothing — when the version disagrees with the manifests, when the bundle is
-# missing, or when that version is already published.
+# missing, when the remote cannot be reached, or when that version is already published.
 set -euo pipefail
 
 die() { echo "release-commit: $*" >&2; exit 1; }
@@ -18,7 +18,10 @@ die() { echo "release-commit: $*" >&2; exit 1; }
 [ $# -eq 2 ] || die "usage: release-commit.sh <version> <remote-url>"
 VERSION="$1"
 REMOTE="$2"
-OUTPUTS=(plugin/dist/index.js plugin/dist/preview-worker.mjs plugin/THIRD-PARTY-NOTICES.txt)
+# What must exist after a build, and what goes into the release on top of the tracked files:
+# all of plugin/dist/ (whatever the build wrote there) and the notices.
+REQUIRED=(plugin/dist/index.js plugin/dist/preview-worker.mjs plugin/THIRD-PARTY-NOTICES.txt)
+OUTPUTS=(plugin/dist plugin/THIRD-PARTY-NOTICES.txt)
 # -c credential.helper= : never let a helper store a token that is part of the remote URL.
 GIT=(git -c credential.helper=)
 
@@ -31,11 +34,14 @@ if [ "$VERSION" != "$PLUGIN_VERSION" ] || [ "$VERSION" != "$PACKAGE_VERSION" ]; 
   die "version mismatch (tag $VERSION, plugin.json $PLUGIN_VERSION, package.json $PACKAGE_VERSION)"
 fi
 
-for f in "${OUTPUTS[@]}"; do
+for f in "${REQUIRED[@]}"; do
   [ -s "$f" ] || die "bundle missing — run npm run build ($f)"
 done
 
-if [ -n "$("${GIT[@]}" ls-remote --tags "$REMOTE" "refs/tags/v$VERSION")" ]; then
+# Asked once, up front: a failed ls-remote must not read as "nothing published yet".
+REFS="$("${GIT[@]}" ls-remote "$REMOTE" "refs/tags/v$VERSION" refs/heads/main 2>/dev/null)" \
+  || die "cannot reach the remote"
+if grep -q "refs/tags/v$VERSION\$" <<<"$REFS"; then
   die "v$VERSION is already published — bump the version"
 fi
 
@@ -51,7 +57,7 @@ TREE="$(git write-tree)"
 unset GIT_INDEX_FILE
 
 PARENT=()
-if [ -n "$("${GIT[@]}" ls-remote --heads "$REMOTE" refs/heads/main)" ]; then
+if grep -q 'refs/heads/main$' <<<"$REFS"; then
   "${GIT[@]}" fetch --quiet --no-tags "$REMOTE" refs/heads/main
   PARENT=(-p "$(git rev-parse FETCH_HEAD)")
 fi

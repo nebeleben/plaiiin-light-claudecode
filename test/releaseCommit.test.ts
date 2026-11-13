@@ -24,7 +24,7 @@ function setVersion(repo: string, version: string) {
   write(repo, 'package.json', JSON.stringify({ name: 'x', version }));
   write(repo, 'plugin/.claude-plugin/plugin.json', JSON.stringify({ name: 'plaiiin-lamps', version }));
 }
-/** A repo shaped like the mirrored mcp/ tree after `npm run build`: build outputs present but git-ignored. */
+/** A repo shaped like this repository after `npm run build`: build outputs present but git-ignored. */
 function makeRepo(version: string): string {
   const repo = mkdtempSync(join(tmpdir(), 'relrepo-'));
   sh(repo, 'init', '-q', '-b', 'source');
@@ -35,6 +35,7 @@ function makeRepo(version: string): string {
   sh(repo, 'commit', '-q', '-m', 'source');
   write(repo, 'plugin/dist/index.js', '// bundle\n');
   write(repo, 'plugin/dist/preview-worker.mjs', '// worker\n');
+  write(repo, 'plugin/dist/chunks/extra.js', '// a build output added later\n');
   write(repo, 'plugin/THIRD-PARTY-NOTICES.txt', 'notices\n');
   write(repo, 'node_modules/x/index.js', 'x\n');
   write(repo, 'scratch.txt', 'untracked, not a build output\n');
@@ -66,6 +67,10 @@ describe('release-commit.sh', () => {
     expect(files).not.toContain('scratch.txt');
   });
 
+  it('release tree takes everything the build wrote to plugin/dist', () => {
+    expect(ls(remote, 'main')).toContain('plugin/dist/chunks/extra.js');
+  });
+
   it('leaves the source repo\'s own index and branch untouched', () => {
     expect(sh(repo, 'status', '--porcelain')).toBe('?? scratch.txt');
     expect(sh(repo, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe('source');
@@ -94,6 +99,14 @@ describe('release-commit.sh', () => {
     expect(r.stderr).toContain('release-commit: version mismatch (tag 0.3.0, plugin.json 0.2.0, package.json 0.2.0)');
     expect(git(remote2, 'for-each-ref')).toBe('');
     rmSync(repo2, { recursive: true, force: true }); rmSync(remote2, { recursive: true, force: true });
+  });
+
+  it('says so when the remote cannot be reached', () => {
+    const repo2 = makeRepo('0.2.0');
+    const r = run(repo2, '0.2.0', join(tmpdir(), 'no-such-remote-' + process.pid));
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('release-commit: cannot reach the remote');
+    rmSync(repo2, { recursive: true, force: true });
   });
 
   it('refuses when the bundle is missing', () => {
