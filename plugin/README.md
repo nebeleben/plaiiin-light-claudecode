@@ -22,8 +22,8 @@ Skills: compose-effect, draw-image, scenes, fleet-ota, lamp-access. Commands:
 
 ## Requirements
 
-macOS, Node.js 20 or newer, lamp firmware 2.8 or newer, and lamps on the same network (mDNS).
-Linux and Windows are untested and not released.
+Node.js 20 or newer, lamp firmware 2.8 or newer, and lamps on the same network (mDNS). Developed
+and tested on macOS; on Linux and Windows keys are kept in a file instead of the Keychain.
 
 ```sh
 claude plugin marketplace add nebeleben/plaiiin-light-claudecode
