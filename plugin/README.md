@@ -6,7 +6,7 @@ Control, compose for and manage PlaiiinLight lamps on your local network from Cl
   key from the clipboard or a QR image; keys stay in the Keychain), `lamp_forget`, `lamp_rename`,
   `swarms_list`.
 - **Control** — power, colour, brightness, mode, play/next/prev/stop.
-- **Effects** — `lamp_form_prompt`, local `effect_preview` (renders frames as a PNG strip in a
+- **Effects** — `lamp_form_prompt`, local `effect_preview` (renders frames as an enlarged PNG in a
   sandbox), validate/compile on the lamp, upload, tunes, copy, local library.
 - **Images** — draw pixel art or a PNG, save, show, label, copy, delete.
 - **Scenes** — capture, write, activate (swarm-aware), copy with script and image, library.
