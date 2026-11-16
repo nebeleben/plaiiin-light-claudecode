@@ -7155,7 +7155,7 @@ var require_fast_uri = __commonJS({
         normalizeString(uri, options);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
-        parse3(serialize(uri, options), options);
+        parse4(serialize(uri, options), options);
       }
       return uri;
     }
@@ -7198,8 +7198,8 @@ var require_fast_uri = __commonJS({
     function resolveComponent(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse3(serialize(base, options), options);
-        relative = parse3(serialize(relative, options), options);
+        base = parse4(serialize(base, options), options);
+        relative = parse4(serialize(relative, options), options);
       }
       options = options || {};
       if (!options.tolerant && relative.scheme) {
@@ -7517,7 +7517,7 @@ var require_fast_uri = __commonJS({
       }
       return { parsed, malformedAuthorityOrPort, malformedPercentEncoding, malformedSchemeSpecific, malformedHost, malformedScheme };
     }
-    function parse3(uri, opts) {
+    function parse4(uri, opts) {
       return parseWithStatus(uri, opts).parsed;
     }
     function normalizeString(uri, opts) {
@@ -7554,7 +7554,7 @@ var require_fast_uri = __commonJS({
       resolveComponent,
       equal,
       serialize,
-      parse: parse3
+      parse: parse4
     };
     module.exports = fastUri;
     module.exports.default = fastUri;
@@ -12479,10 +12479,10 @@ var require_packer_sync = __commonJS({
 var require_png_sync = __commonJS({
   "node_modules/pngjs/lib/png-sync.js"(exports) {
     "use strict";
-    var parse3 = require_parser_sync();
+    var parse4 = require_parser_sync();
     var pack = require_packer_sync();
     exports.read = function(buffer, options) {
-      return parse3(buffer, options || {});
+      return parse4(buffer, options || {});
     };
     exports.write = function(png, options) {
       return pack(png, options);
@@ -14222,7 +14222,7 @@ var require_decoder = __commonJS({
           }).bind(this);
           xhr.send(null);
         },
-        parse: function parse3(data) {
+        parse: function parse4(data) {
           var maxResolutionInPixels = this.opts.maxResolutionInMP * 1e3 * 1e3;
           var offset = 0, length = data.length;
           function readUint16() {
@@ -26897,7 +26897,7 @@ var require_extension = __commonJS({
       if (dest[name] === void 0) dest[name] = [elem];
       else dest[name].push(elem);
     }
-    function parse3(header) {
+    function parse4(header) {
       const offers = /* @__PURE__ */ Object.create(null);
       let params = /* @__PURE__ */ Object.create(null);
       let mustUnescape = false;
@@ -27037,7 +27037,7 @@ var require_extension = __commonJS({
         }).join(", ");
       }).join(", ");
     }
-    module.exports = { format, parse: parse3 };
+    module.exports = { format, parse: parse4 };
   }
 });
 
@@ -27072,7 +27072,7 @@ var require_websocket = __commonJS({
     var {
       EventTarget: { addEventListener, removeEventListener }
     } = require_event_target();
-    var { format, parse: parse3 } = require_extension();
+    var { format, parse: parse4 } = require_extension();
     var { toBuffer } = require_buffer_util();
     var kAborted = /* @__PURE__ */ Symbol("kAborted");
     var protocolVersions = [8, 13];
@@ -27768,7 +27768,7 @@ var require_websocket = __commonJS({
           }
           let extensions;
           try {
-            extensions = parse3(secWebSocketExtensions);
+            extensions = parse4(secWebSocketExtensions);
           } catch (err) {
             const message = "Invalid Sec-WebSocket-Extensions header";
             abortHandshake(websocket, socket, message);
@@ -28065,7 +28065,7 @@ var require_subprotocol = __commonJS({
   "node_modules/ws/lib/subprotocol.js"(exports, module) {
     "use strict";
     var { tokenChars } = require_validation2();
-    function parse3(header) {
+    function parse4(header) {
       const protocols = /* @__PURE__ */ new Set();
       let start = -1;
       let end = -1;
@@ -28101,7 +28101,7 @@ var require_subprotocol = __commonJS({
       protocols.add(protocol);
       return protocols;
     }
-    module.exports = { parse: parse3 };
+    module.exports = { parse: parse4 };
   }
 });
 
@@ -30932,18 +30932,18 @@ var validateAsync = async (schema, value, _ctx) => {
   return result2.issues.length === 0;
 };
 var _encode = (_Err) => {
-  const parse3 = _parse(_Err);
+  const parse4 = _parse(_Err);
   const fn = (schema, value, _ctx, _params) => {
     const ctx2 = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
-    return parse3(schema, value, ctx2, finalizeParams(fn, _params));
+    return parse4(schema, value, ctx2, finalizeParams(fn, _params));
   };
   return fn;
 };
 var encode = /* @__PURE__ */ _encode($ZodRealError);
 var _decode = (_Err) => {
-  const parse3 = _parse(_Err);
+  const parse4 = _parse(_Err);
   const fn = (schema, value, _ctx, _params) => {
-    return parse3(schema, value, _ctx, finalizeParams(fn, _params));
+    return parse4(schema, value, _ctx, finalizeParams(fn, _params));
   };
   return fn;
 };
@@ -32438,7 +32438,7 @@ function capSize(inst, size) {
   if (!caps.length)
     return;
   const cap = Math.min(...caps.map((c) => c[0]));
-  const parse3 = inst._zod.parse;
+  const parse4 = inst._zod.parse;
   inst._zod.parse = (payload, ctx2) => {
     const n = size(payload.value);
     if (n > cap && !ctx2?.skipChecks && ctx2?.direction !== "backward") {
@@ -32452,7 +32452,7 @@ function capSize(inst, size) {
         }
       }
     }
-    return parse3(payload, ctx2);
+    return parse4(payload, ctx2);
   };
 }
 var arraySize = (input2) => Array.isArray(input2) ? input2.length : -1;
@@ -59216,6 +59216,61 @@ var EMPTY_COMPLETION_RESULT = {
   }
 };
 
+// raw:skills/compose-effect/SKILL.md
+var SKILL_default = "---\nname: compose-effect\ndescription: Use when the user wants a new light effect, animation or pattern on a PlaiiinLight lamp, or wants an existing effect script changed or fixed \u2014 writing, previewing, uploading, playing and tuning `shade()` scripts with the plaiiin-lamps tools.\n---\n\n# Compose an effect for a PlaiiinLight lamp\n\nAn effect is a small JavaScript-like script that the lamp compiles to its own bytecode and runs\nonce per LED per frame. Work on one lamp first; copy to others only after the user likes it.\n\n## The loop\n\n1. **Pick the lamp.** If the user didn't name one, call `lamps_list` and ask (or use the only one).\n2. **Always call `lamp_form_prompt` first.** It returns the lamp's physical form and pixel layout in\n   words (`prompt` \u2014 the owner may have customised it), its `grid` `{w, h}`, and the script\n   `contract`. Design for exactly that grid: a 16\xD78 tower wraps around (x = 0 and x = w\u22121 are\n   neighbours), a strip is `w\xD71`, a panel is flat. Read the prompt; it says what looks good.\n3. **Write the script** (contract below). Keep it small.\n4. **Preview locally with `effect_preview`** (`source`, `lamp` \u2014 or `w`/`h` \u2014, `frames`, `fps`,\n   `params`). Nothing is sent to the lamp. It returns a PNG strip (frames left to right, (0,0)\n   top-left) \u2014 **look at the image** and check it matches the idea: motion between frames, colours,\n   nothing stuck or black (a warning appears when every frame is black). Fix and preview again\n   until it looks right. Use enough frames/fps to see the motion (e.g. 16 frames at 10 fps).\n5. **`effect_validate`** on the lamp (its own validator, nothing stored), then **`effect_compile`**\n   (reports `bytecodeBytes`). On `{valid: false, error}` fix the script with the lamp's error text\n   and go back to step 4.\n6. **`effect_upload`** with a `name` (see Naming). If an effect of that name already exists with a\n   different script, the call returns `{needsConfirmation, summary, confirm}` and changes nothing:\n   show the summary to the user, wait for an explicit yes, then repeat the identical call with\n   `confirm`. A name that is a built-in on that lamp is skipped \u2014 pick another name.\n7. **`lamp_play`** `{action: \"play\", effect: name}`. The lamp may be off \u2014 `lamp_state` shows `on`;\n   ask before switching it on with `lamp_power`.\n8. **Tune.** `effect_tunes_get` lists the `@param`s with their live values; `effect_tunes_set` changes\n   them live (partial, clamped to range, persisted). Ask the user what they see and adjust; for\n   bigger changes edit the script and repeat from step 4.\n9. Optional: `library_save_effect` keeps it on this computer; `effect_copy` / `library_push_effect`\n   put it on other lamps (same confirm rule as upload).\n\n## Script contract\n\n```js\n// @description One line: what it looks like (shown in the apps' effect lists)\n// @tags calm,slow,ambient\n// @param speed 0.1..5 = 1 Animation speed\n// @param trail switch = 1 Leave a fading trail\n// @state head : 0\n// @state.pixel glow : 0\n\nfunction shade(x, y, idx, frame, base, params) {\n  let t = time * 0.001 * params.speed;          // seconds since play, scaled\n  let v = 0.5 + 0.5 * sinLUT(x * 0.6 + t * 3);  // 0..1\n  emit(base.r * v, base.g * v, base.b * v);     // or emitBright(v)\n}\n```\n\n- Exactly one `function shade(x, y, idx, frame, base, params)`. It must call `emit(r, g, b)`\n  (0\u2013255 each) or `emitBright(v)` (0\u20131, times the lamp's base colour) **once** per call.\n- In scope: `x`, `y` (grid position, 0,0 = top-left), `idx` (= y\xB7w + x), `frame` (frame counter),\n  `w`, `h` (grid size), `time` (ms since play started), `playStart`, `base` (`{r, g, b}`, the\n  colour the user picked \u2014 tint with it so the effect follows the lamp colour), `params`.\n- Built-ins only: `sinLUT`, `cosLUT` (256-entry table, input in radians), `floor`, `ceil`,\n  `round`, `abs`, `sqrt`, `pow`, `min`, `max`, `clamp01`, `hash` (int \u2192 0..1, deterministic),\n  `random`, `emit`, `emitBright`. No other globals, no `Math.*`, no helper functions. Division or\n  modulo by zero gives 0.\n- Annotations (each on its own `//` line):\n  - `// @param NAME MIN..MAX = DEF description` \u2192 `params.NAME`, a tune the user can change.\n  - `// @param NAME switch = 0|1 description` \u2192 a 0/1 toggle.\n  - `// @state NAME : DEF` \u2192 a variable `NAME` that keeps its value across frames (shared by all\n    pixels; update it e.g. only when `idx == 0`).\n  - `// @state.pixel NAME : DEF` \u2192 per-LED value, used as `NAME.pixel`.\n  - `// @description \u2026` and `// @tags a,b` \u2192 shown in effect lists.\n- Prefer `time` over `frame` for speed so the look doesn't depend on fps.\n\nThe lamp compiles a **small JS subset**, so plain JavaScript habits fail validation:\n\n- Statements: `let NAME = expr;` (always initialised; no `var`/`const`), `NAME = expr;`\n  (no `+=`, `-=`, `++` outside a for-step \u2014 write `a = a + 1;`), `if (\u2026) { \u2026 } else { \u2026 }` (braces\n  required), `for (let i = 0; i < n; i++) { \u2026 }` (step `i++` or `i += N` only), and calls to\n  `emit`/`emitBright`. No `return`, `while`, `switch`, ternary `?:`, strings, arrays or objects.\n- Operators: `+ - * / %`, comparisons, `&&`, `||`, unary `-` and `!`. No bitwise `& | ^ << >>`.\n- `min`/`max`/`pow` take exactly two arguments; `random()` none.\n- Member access only as `params.NAME`, `base.r|g|b` and `NAME.pixel`.\n\n## Limits (keep scripts small)\n\nThe lamp caps a program at 12 `@param`s, 32 `@state`, 8 `@state.pixel`, 32 locals and 4096 bytes\nof bytecode (`effect_compile` reports the size; \"bytecode too large\" means simplify). Source is at\nmost 32 KB here. The script runs for every LED every frame on a microcontroller: avoid loops over\nthe whole grid inside `shade()` \u2014 compute each pixel from `x`, `y`, `time` and state instead.\n\n## Naming\n\n1\u201332 characters of letters, digits, `_` or `-`, lower-case and descriptive (`ocean-drift`,\n`ember_glow`). Check `effects_list` first so you don't collide with an existing or built-in effect\nby accident; replacing one needs the user's yes.\n\n## Access\n\nUploading, validating and compiling need the `effects` permission on an AI key (creator or admin\notherwise); playing needs `control`. A refusal says which permission is missing \u2014 tell the user\n(see the lamp-access skill); never try to work around it. `effect_preview` needs no access at all,\nso you can always show a preview.\n\n## Confirmations\n\nEvery `needsConfirmation` answer: show its `summary` to the user in plain words and wait for an\nexplicit yes before calling again with `confirm`. Never pass `confirm` on your own.\n";
+
+// raw:skills/draw-image/SKILL.md
+var SKILL_default2 = '---\nname: draw-image\ndescription: Use when the user wants a still picture, icon, pixel art, emoji, text or a PNG shown on a PlaiiinLight lamp, or wants saved lamp images listed, shown, copied or deleted \u2014 with the plaiiin-lamps image tools.\n---\n\n# Draw an image on a PlaiiinLight lamp\n\n## Find the grid first\n\nCall `lamp_info` (or `lamp_form_prompt`, which also describes the physical form) and use the\nlogical grid `{w, h}` \u2014 `grid` in the fleet entry, `logicalW`/`logicalH` in `info`. A drawing is\nexactly that size; every pixel is one LED (or one LED group). Typical grids are tiny (16\xD78, 8\xD78,\n16\xD716, 32\xD78): design for them, don\'t shrink a big picture in your head.\n\n## Pixel-art guidance\n\n- Few pixels: bold silhouettes, 1-pixel outlines, no gradients thinner than 3\u20134 steps.\n- Black `#000000` is "off" \u2014 use it for background so the shape stands out.\n- LEDs are bright and saturated: prefer full colours over pastels; dim with darker shades, not grey.\n- Text: at most 2\u20133 characters per 8 rows (3\xD75 or 4\xD76 glyphs). On a wrapped tower the left and\n  right edges meet \u2014 centre the subject.\n- Sketch the rows as a small table to the user first if the subject is complex.\n\n## Draw it\n\n`image_draw` with `lamps` and either:\n\n- `pixels`: rows top to bottom, each row `w` colours (`"#rrggbb"` or `[r, g, b]`), exactly `h` rows.\n  A lamp with another grid fails with "needs a W\xD7H grid" \u2014 draw per grid size.\n- `pngPath`: an absolute path to a PNG on this computer; it is resized to each lamp\'s grid\n  (transparent = off). Good for user-supplied pictures; for small grids hand-made `pixels` usually\n  look better.\n\nTell the user before drawing: it **replaces the lamp\'s current drawing** (an unsaved drawing is\nlost) and stops the playing effect or scene. With `save` (default true) it is also saved on the lamp\nwith your `label` and the result returns its `id`; an identical image already saved is reused\n(`reused: true`). The lamp holds about 30 images (`images_list` shows `count`/`max`); when full the\nimage is drawn but not saved \u2014 ask the user which one to delete.\n\nThen ask whether it looks right and adjust. To keep a copy on this computer use\n`library_save_image`; `library_push_image` / `image_copy` put it on other lamps with the same grid.\n\n## Other image tools\n\n- `images_list` \u2014 saved images with `id`, `label`, size and `fitsGrid`. Ids (`img-001`, \u2026) are per\n  lamp: the same id on two lamps is usually a different picture.\n- `image_get` \u2014 returns a saved image as a PNG so you can look at it.\n- `image_show` \u2014 show a saved image (frame mode).\n- `image_label` \u2014 rename a saved image (scenes keep working; they use the id).\n- `image_delete` \u2014 two-step (see below); scenes that show the image can\'t be activated afterwards,\n  so check `scenes_list` and mention any affected scene in your message to the user.\n\n## Access\n\nDrawing, saving, showing, labelling and deleting need the `images` permission on an AI key (creator\nor admin otherwise). A refusal names the missing permission \u2014 tell the user (lamp-access skill).\n\n## Confirmations\n\nEvery `needsConfirmation` answer: show its `summary` to the user and wait for an explicit yes before\ncalling again with `confirm`. Never pass `confirm` on your own.\n';
+
+// raw:skills/fleet-ota/SKILL.md
+var SKILL_default3 = "---\nname: fleet-ota\ndescription: Use when the user asks whether their PlaiiinLight lamps are up to date, or wants lamp firmware updated (one lamp or the whole fleet) \u2014 firmware_check first, one lamp first, explicit confirmation before every update.\n---\n\n# Firmware updates for PlaiiinLight lamps\n\nFirmware comes from the newest PlaiiinLight release on GitHub. The server picks the build for each\nlamp's form and chip, verifies it against the release's `SHA256SUMS` (a release without one is\nrefused) and installs it over the network.\n\n## Always in this order\n\n1. **`firmware_check`** with `lamps: \"all\"` (or the lamps the user named). Per lamp you get\n   `current`, `latest`, `update: true` with the `asset`, `upToDate`, or a `reason` (e.g. \"no build\n   for <form>/<target>\", or firmware too old to report its form \u2014 those need the PlaiiinLight app).\n   Show the user a short table. Never call `firmware_update` without a check first.\n2. **One lamp first.** Suggest the least important lamp. Call `firmware_update` with just that lamp\n   and no `confirm`: it returns `{needsConfirmation, summary, confirm}` listing `current \u2192 new`.\n   Show the summary, say that the lamp reboots and is unavailable for up to a minute, and **wait\n   for an explicit yes**. Then repeat the identical call with `confirm`.\n3. The tool uploads, waits for the lamp to come back on the new version (\u2264 90 s) and returns\n   `{ok: true, from, to, verified}`. Check with the user that the lamp works (`lamp_state`, or ask\n   them to look).\n4. **Then the rest** \u2014 again: call without `confirm`, show the summary, wait for yes, call with\n   `confirm`. Lamps are updated one at a time; the first failure stops the run and later lamps are\n   reported `skipped`. On a failure stop and report the reason; don't retry blindly.\n\nConfirmation tokens are valid for 120 s and bound to the exact arguments \u2014 if the user takes\nlonger or changes the lamp list, call again without `confirm` for a fresh summary.\n\n## Access\n\n`firmware_check` only reads. `firmware_update` needs admin (an unpaired lamp) or an AI key with the\n`ota` permission. `ota` is effectively full control of a lamp (new firmware can read every secret on\nit), so owners often leave it off \u2014 then the user updates that lamp in the PlaiiinLight app\ninstead. Don't ask for `ota` casually.\n\n## Never\n\nNever update several lamps in one go without having done one first, never pass `confirm` without\nthe user's yes in this conversation, and never try to downgrade or flash files from elsewhere \u2014 the\ntool only installs the newest release.\n";
+
+// raw:skills/lamp-access/SKILL.md
+var SKILL_default4 = '---\nname: lamp-access\ndescription: Use when a PlaiiinLight lamp tool is refused ("not permitted by this lamp\'s AI key", "needs <perm>", key revoked), when a lamp is paired and must be added, or when the user asks how to give the assistant access to a lamp or what an AI access key allows.\n---\n\n# Access to PlaiiinLight lamps\n\nEach lamp in the fleet has one access level on this computer (`lamps_list` shows `role`, and for AI\nkeys `perms`, `maxBrightness`, `onlyWhenOn`):\n\n- **admin** \u2014 an unpaired lamp (no owner yet): everything. `lamps_discover` adds these by itself.\n- **ai** \u2014 an AI access key the owner made for an AI assistant: exactly the permissions they granted.\n- **creator / user** \u2014 an ordinary share key (see "Older firmware").\n\n## Adding a paired lamp: an AI access key\n\n`lamps_discover` lists paired lamps it can\'t use under `needsKey`. The owner creates a key in the\nPlaiiinLight app (firmware 2.8.0 or newer):\n\n1. **Share** tab \u2192 **New Share** \u2192 pick the lamp.\n2. **Access: AI** ("For an AI assistant such as Claude").\n3. Choose the permissions (below), optionally **Limit brightness** and **Only while the lamp is on**.\n4. Create \u2192 the app shows a QR code and a link (on Linux/Windows: **Copy link**).\n\nThen add it **without the key passing through the chat**:\n\n- Preferred (macOS): the user copies the link, you call `lamp_add_shared` with `fromClipboard: true`.\n- Or: the user saves/screenshots the QR code and gives you the file path \u2192 `lamp_add_shared` with\n  `qrImagePath`.\n- Only if neither works: the user pastes the link and you pass it as `url`.\n\nShare links are always `http://` (lamps serve plain http on the LAN); an `https://` link is refused.\nAsk the user for the `http://` link the app shows.\n\nThe key goes into the macOS Keychain (on other systems a `secrets.json` readable only by the user)\nand is never returned. **Never ask the user to paste a key into the chat if another way works,\nnever repeat, print or log a key or share link**, and never write one into a file.\n\n## What each permission allows\n\n| Permission | Allows |\n|---|---|\n| `control` | power, colour, brightness, mode, play/next/prev/stop, activating scenes |\n| `effects` | upload/delete effect scripts, validate/compile, set tunes |\n| `images` | draw, save, show, label, delete images |\n| `scenes` | create, capture, overwrite, delete scenes (activating is `control`) |\n| `stream` | live streaming \u2014 a stream can also switch the lamp on and off |\n| `ota` | firmware updates \u2014 **effectively full control**: new firmware can read every secret on the lamp. Suggest it only when the user wants the assistant to update firmware. |\n| `rename` | rename the lamp (it restarts) |\n| `swarm` | read which swarm the lamp is in (never join/leave) |\n\nReads (state, effects list, images, scenes, info) always work with any key. Pairing, keys, Wi-Fi,\nMQTT, limits, grid, orientation, Bluetooth, the lamp\'s AI provider key and factory reset can never be\ngranted \u2014 this server has no tools for them. `maxBrightness` caps brightness set through this key (the result shows the applied value);\n`onlyWhenOn` refuses everything but reads and power while the lamp is off.\n\n## When a tool is refused\n\nThe reason names the missing permission, e.g. `not permitted by this lamp\'s AI key (needs effects)`.\nTell the user which permission is missing and that the owner can add it in the app (Share tab \u2192\nthe AI key \u2192 Edit; no new key needed). **Never try to work around a refusal** (another tool, another\nlamp in the swarm, streaming instead of uploading). "The lamp no longer accepts the stored key" means\nit was revoked or deleted: the user needs a new share link; offer `lamp_forget` for the old entry.\n\n## Older firmware (< 2.8.0)\n\nLamps before 2.8.0 have no AI keys. The owner can share a **creator** key instead (Share \u2192 New\nShare \u2192 Access: Creator) and you add it the same way. Creator covers control, effects, images and\nscenes; a **user** key covers control, tunes and activating scenes. Firmware updates, rename and\nswarm membership need the owner (admin) \u2014 or updating the lamp to 2.8.0+ in the app and then an AI\nkey.\n\n## Confirmations\n\n`lamp_forget` and `lamp_rename` are two-step: show the `summary` to the user and wait for an\nexplicit yes before calling again with `confirm`. Forgetting only removes the lamp from this\ncomputer; revoking the key is done in the app.\n';
+
+// raw:skills/scenes/SKILL.md
+var SKILL_default5 = '---\nname: scenes\ndescription: Use when the user wants to save, recall, edit, copy or delete a scene ("mood", "preset", "good night look") on PlaiiinLight lamps, or to sync scenes between lamps or swarms \u2014 with the plaiiin-lamps scene tools.\n---\n\n# Scenes on PlaiiinLight lamps\n\nA **scene** is a named snapshot stored on the lamp (up to 32 per lamp), recalled in one call by\nevery app, Home Assistant, the swarm and you. Its document has optional fields \u2014 an absent field\nmeans "leave as is":\n\n```json\n{ "script": "blaze", "params": { "speed": 2 }, "image": "img-003",\n  "color": [255, 140, 40], "brightness": 120, "mode": "js" }\n```\n\n- `script` (an effect on that lamp) implies js mode; `image` (a saved image id **of that lamp**)\n  implies frame mode; `mode` is used only when neither is given (e.g. `api` + `color` = solid).\n- **Power is not part of a scene.** Activating leaves the lamp on or off; on an off lamp the content\n  shows at the next power-on. Capture never records power. Only write `on` when the user\n  explicitly wants a "good night" / "wake up" scene that switches power.\n- Names: 1\u201332 of letters, digits, `_`, `-`.\n\n## Tools\n\n- `scenes_list` \u2014 scenes with their documents and which one is `active`. `scene_get` \u2014 one document.\n- `scene_capture` \u2014 save what the lamp shows right now (effect + tunes, image, colour, brightness).\n  The easiest way: set the lamp up, then capture.\n- `scene_put` \u2014 write a document directly. The script must exist on the lamp; the image id must be\n  one of its saved images. More than 32 fails with "scene store full".\n- `scene_activate` \u2014 apply it (needs `control`). Lamps in one swarm mirror a scene: per swarm one\n  member gets the request and the others report `viaSwarm` \u2014 that is success, not a skip.\n- `scene_copy` \u2014 copy a scene from one lamp to others the way the apps\' swarm sync does:\n  - an uploaded script travels along (source + its tune values); a built-in script must already\n    exist on the target;\n  - the scene\'s image is saved on the target (deduped: an identical image is reused) and the copied\n    scene points at the target\'s new image id; a target with a different grid gets the scene\n    **without** the image plus a `warning` \u2014 say so;\n  - the copy is written without power.\n- `library_save_scene` / `library_push_scene` \u2014 keep a scene (with script and image pixels) on this\n  computer and write it to lamps later, with the same rules as `scene_copy`.\n- `scene_delete` \u2014 two-step, names the lamps that actually have it.\n\nUse `swarms_list` before copying across lamps: lamps already in one swarm share scenes by name\nwhen activated, but each still needs its own copy of the scene to exist.\n\n## Confirmations\n\nOverwriting a scene (put / capture / copy / push onto an existing name, or a copy that would replace\na different script of the same name) and every delete first return\n`{needsConfirmation, summary, confirm}`. Show the summary to the user, wait for an explicit yes, then\nrepeat the identical call with `confirm`. Never pass `confirm` on your own.\n\n## Access\n\nWriting, capturing and deleting need `scenes` on an AI key (creator or admin otherwise); activating\nneeds `control`. A refusal names the missing permission \u2014 tell the user (lamp-access skill).\n';
+
+// src/guidance.ts
+function parse3(name, source2) {
+  const m = /^---\n([\s\S]*?)\n---\n+([\s\S]*)$/.exec(source2.replace(/\r\n/g, "\n"));
+  if (!m) throw new Error(`guidance: skills/${name}/SKILL.md has no front matter`);
+  const description = /^description:\s*(.*)$/m.exec(m[1])?.[1]?.replace(/^["']|["']$/g, "").trim();
+  if (!description) throw new Error(`guidance: skills/${name}/SKILL.md has no description`);
+  return { name, description, text: m[2].trimEnd() + "\n" };
+}
+var SKILLS = [
+  parse3("compose-effect", SKILL_default),
+  parse3("draw-image", SKILL_default2),
+  parse3("fleet-ota", SKILL_default3),
+  parse3("lamp-access", SKILL_default4),
+  parse3("scenes", SKILL_default5)
+];
+var skillUri = (name) => `plaiiin-lamps://skills/${name}`;
+var GUIDANCE_INSTRUCTIONS = ` Guides for the common jobs (composing an effect, drawing, scenes, firmware updates, access) are available through the lamps_guide tool (also as prompts, and as resources under ${skillUri("")}) \u2014 read the matching one before starting such a job.`;
+function registerGuidance(server2) {
+  const names = SKILLS.map((s) => s.name);
+  server2.registerTool("lamps_guide", {
+    title: "Read a guide",
+    description: "Read the guide for a job before doing it \u2014 how the tools fit together, what to check, what to avoid. Topics: " + SKILLS.map((s) => `${s.name} (${s.description})`).join("; ") + ". Read-only.",
+    inputSchema: { topic: external_exports.enum(names).describe("Which guide") },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+  }, async ({ topic }) => ({ content: [{ type: "text", text: SKILLS.find((s) => s.name === topic).text }] }));
+  for (const s of SKILLS) {
+    server2.registerPrompt(
+      s.name,
+      { title: s.name, description: s.description },
+      () => ({ messages: [{ role: "user", content: { type: "text", text: s.text } }] })
+    );
+    server2.registerResource(
+      s.name,
+      skillUri(s.name),
+      { title: s.name, description: s.description, mimeType: "text/markdown" },
+      (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: s.text }] })
+    );
+  }
+}
+
 // src/tools/context.ts
 var lampsArg = external_exports.union([external_exports.literal("all"), external_exports.string().min(1), external_exports.array(external_exports.string().min(1)).min(1)]).describe('Lamp names or deviceIds (one string, a list), or "all" for every lamp in the fleet');
 var lampArg = external_exports.string().min(1).describe("Lamp name or deviceId");
@@ -59386,7 +59441,7 @@ var CONTROL = { perm: "control", minRole: "user" };
 var READ = { minRole: "user" };
 var PER_LAMP = "Returns one result per lamp: `{lamp, ok: true, \u2026}` or `{lamp, ok: false, skipped?, reason}`.";
 var NEEDS_CONTROL = "Needs the `control` permission on AI keys (any user/creator/admin key works).";
-var rgb = external_exports.tuple([external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255)]);
+var rgb = external_exports.array(external_exports.number().int().min(0).max(255)).length(3);
 var color = external_exports.union([external_exports.string().regex(/^#?[0-9a-fA-F]{6}$/, 'a "#rrggbb" hex color'), rgb]).describe('"#rrggbb" or [r, g, b] with 0\u2013255 each');
 function toRgb(c) {
   if (Array.isArray(c)) return c;
@@ -60531,7 +60586,7 @@ var ID_NOTE = "Image ids (`img-001`, \u2026) are per lamp: the same id on two la
 var imageId = external_exports.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "an image id such as img-001").describe("Image id as listed by images_list (e.g. img-001)");
 var ctrlChars = /[\x00-\x1f\x7f]/;
 var label = external_exports.string().refine((s) => Buffer.byteLength(s, "utf8") <= 32, "at most 32 bytes (UTF-8)").refine((s) => !ctrlChars.test(s), "no control characters");
-var colorCell = external_exports.union([external_exports.string(), external_exports.tuple([external_exports.number().int(), external_exports.number().int(), external_exports.number().int()])]);
+var colorCell = external_exports.union([external_exports.string(), external_exports.array(external_exports.number().int()).length(3)]);
 var confirmArg2 = external_exports.string().optional().describe("Token from a previous needsConfirmation answer");
 var libName = external_exports.string().regex(/^[A-Za-z0-9_-]{1,32}$/, "1\u201332 letters, digits, _ or -");
 var enc4 = (n) => encodeURIComponent(n);
@@ -61052,7 +61107,7 @@ var sceneDoc = external_exports.object({
   script: external_exports.string().min(1).optional().describe("Effect name (implies js mode); must exist on the lamp"),
   params: external_exports.record(external_exports.string(), external_exports.number()).optional().describe("Tune values for the script"),
   image: external_exports.string().min(1).optional().describe("Saved image id (implies frame mode); ids are per lamp"),
-  color: external_exports.tuple([external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255), external_exports.number().int().min(0).max(255)]).optional(),
+  color: external_exports.array(external_exports.number().int().min(0).max(255)).length(3).optional().describe("[r, g, b] with 0\u2013255 each"),
   brightness: external_exports.number().int().min(0).max(255).optional()
 }).strict().describe('Scene document; every field optional, an absent field means "leave as is"');
 var enc5 = (n) => encodeURIComponent(n);
@@ -61818,10 +61873,12 @@ function registerStreamTools(server2, ctx2) {
 
 // src/server.ts
 var SERVER_NAME = "plaiiin-lamps";
-var SERVER_VERSION = "0.2.0";
-var INSTRUCTIONS = 'Controls PlaiiinLight lamps on the local network. Start with lamps_list (or lamps_discover to find lamps). Tools that target lamps take `lamps` as names, deviceIds or "all" and report one result per lamp. Access is per lamp: an AI access key only allows the permissions the owner granted \u2014 a refusal names the missing permission; never try to work around it. Destructive tools first return {needsConfirmation, summary, confirm}: show the summary to the user and call again with confirm only after they agree.';
-function buildServer(ctx2) {
-  const server2 = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { instructions: INSTRUCTIONS });
+var SERVER_VERSION = "0.3.1";
+var INSTRUCTIONS = 'Controls PlaiiinLight lamps on the local network. Start with lamps_list (or lamps_discover to find lamps). Tools that target lamps take `lamps` as names, deviceIds or "all" and report one result per lamp. Access is per lamp: an AI access key only allows the permissions the owner granted \u2014 a refusal names the missing permission; never try to work around it. Destructive tools first return {needsConfirmation, summary, confirm}: show the summary to the user and call again with confirm only after they agree. Reach lamps only through these tools: if one you need seems to be missing, say so instead of calling a lamp\'s web interface or HTTP API yourself.';
+function buildServer(ctx2, opts = {}) {
+  const instructions = opts.guidance ? INSTRUCTIONS + GUIDANCE_INSTRUCTIONS : INSTRUCTIONS;
+  const server2 = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION }, { instructions });
+  if (opts.guidance) registerGuidance(server2);
   registerFleetTools(server2, ctx2);
   registerSwarmTools(server2, ctx2);
   registerControlTools(server2, ctx2);
@@ -61852,7 +61909,7 @@ try {
 var { stateDir } = profile;
 var registry2 = new Registry(new FleetStore(stateDir), makeSecrets(stateDir, process.platform, void 0, profile.keychainService));
 var ctx = { registry: registry2, confirm: new Confirmations(), stateDir };
-var server = buildServer(ctx);
+var server = buildServer(ctx, { guidance: process.env.PLAIIIN_LAMPS_GUIDANCE === "1" });
 await server.connect(new StdioServerTransport());
 registry2.refreshAccess().catch((e) => process.stderr.write(`plaiiin-lamps: access refresh failed: ${errorText(e)}
 `));
