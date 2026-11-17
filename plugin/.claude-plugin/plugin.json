@@ -1,7 +1,7 @@
 {
   "name": "plaiiin-lamps",
   "displayName": "PlaiiinLight lamps",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Control, compose for and manage PlaiiinLight lamps on your local network.",
   "author": { "name": "plaiiin" },
   "license": "Apache-2.0",
