@@ -1,8 +1,14 @@
 {
   "name": "plaiiin-lamps",
-  "version": "0.3.6",
+  "displayName": "PlaiiinLight lamps",
+  "version": "0.3.7",
   "description": "Control, compose for and manage PlaiiinLight lamps on your local network.",
   "author": { "name": "plaiiin" },
   "license": "Apache-2.0",
+  "homepage": "https://plaiiin-light.com/integrations.html#claude",
+  "repository": "https://github.com/nebeleben/plaiiin-light-claudecode",
+  "documentationUrl": "https://github.com/nebeleben/plaiiin-light-claudecode#readme",
+  "supportUrl": "https://github.com/nebeleben/plaiiin-light-claudecode/issues",
+  "privacyPolicyUrl": "https://plaiiin-light.com/privacy.html",
   "keywords": ["plaiiinlight", "lamps", "led", "mcp"]
 }
